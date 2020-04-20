@@ -26,14 +26,14 @@ entry:
     ;CS code segment代码段寄存器
     MOV AX,0  ;初始化寄存器
     MOV SS,AX ;SS stack segment栈段寄存器
-    MOV SP,0x7c00
+    MOV SP, 0x7c00
     MOV DS,AX ;DS data segment数据段寄存器
     MOV ES,AX ;ES extra segment附加段寄存器
-    MOV SI,msg ;盲猜一波，这里将msg写入内存后，SI保留msg在内存中的首地址
+    MOV SI,msg ;盲猜一波，这里将msg写入内存后，SI保留msg在内存中的首地址（最低的地址）
 
 putloop:
     MOV AL,[SI] ;[si]取址，AL是8位，正好取一个字节
-    ADD SI,1 ;SI向下移动，指向下一个字节
+    ADD SI,1 ;SI向"下"移动，指向下一个字节(实际上应该是向高地址移动，因为内存空间是从上到下开辟使用的)
     CMP AL,0 ;AL中如果是0，别忘了msg后面的内容我们用0填充，表明内容读完了，后面全是0
     JE fin ;jump if equl，内容读完，结束即可
     MOV AH, 0x0e ;显示一个文字
