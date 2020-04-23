@@ -19,4 +19,4 @@ os.img: os.bin ipl.bin Makefile
 
 qemu: $(file)
 	nasm $(file) -o $(file).bin
-	qemu-system-i386 -drive format=raw,file=$(file).bin
+	qemu-system-x86_64 -drive format=raw,file=$(file).bin
