@@ -21,7 +21,9 @@ DEL      = rm
 # 默认动作
 
 default :
-	$(MAKE) img
+	$(MAKE) clean
+	$(MAKE) run
+	$(MAKE) clean
 
 # 镜像文件生成
 
