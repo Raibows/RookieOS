@@ -14,6 +14,8 @@ GLOBAL _io_out8, _io_out16, _io_out32
 GLOBAL _io_load_eflags, _io_store_eflags
 GLOBAL _write_mem8
 GLOBAL _load_gdtr, _load_idtr
+GLOBAL _asm_int_handler21, _asm_int_handler27, _asm_int_handler2c
+EXTERN _int_handler21, _int_handler27, _int_handler2c
     
 
 
@@ -85,19 +87,73 @@ _io_store_eflags: ;void io_store_eflags(int eflags)
 
 
 _write_mem8: ; void write_mem8(int addr, int data)
-    MOV ECX, [ESP+4] ;esp+4 = addr
-    MOV AL, [ESP+8] ;esp+8 = data
+    ;注意栈地址从高到低，一个结构体也好，一个数组也好，最开始的元素都在低地址
+    MOV ECX, [ESP+4] ;esp+4 to esp+8 = addr
+    MOV AL, [ESP+8] ;esp+8 to esp+12 = data
     MOV [ECX], AL
     RET
 
-_load_gdtr:		; void load_gdtr(int limit, int addr);
-	MOV	AX,[ESP+4]		; limit
-	MOV	[ESP+6], AX
-	LGDT [ESP+6]
-	RET
+_load_gdtr:        ; void load_gdtr(int limit, int addr);
+    ;使用48位GPTR寄存器的唯一办法就是LGDT命令
+    ;低16位存储limit，高32位表示段开始地址
+    ;x86下是小端，即数值的高位在内存中高位
+    MOV    AX,[ESP+4]        ; limit
+    MOV    [ESP+6], AX
+    LGDT [ESP+6] ;from esp+6 to esp+12共6bytes，48bits
+    RET
 
-_load_idtr:		; void load_idtr(int limit, int addr);
-	MOV	AX,[ESP+4]		; limit
-	MOV	[ESP+6],AX
-	LIDT [ESP+6]
-	RET
+_load_idtr:        ; void load_idtr(int limit, int addr);
+    MOV    AX,[ESP+4]        ; limit
+    MOV    [ESP+6],AX
+    LIDT [ESP+6]
+    RET
+
+_asm_int_handler21:
+   PUSH ES
+   PUSH DS
+   PUSHAD
+   MOV EAX, ESP
+   PUSH EAX
+   MOV AX, SS
+   MOV DS, AX
+   MOV ES, AX
+   CALL _int_handler21
+   POP EAX
+   POPAD
+   POP DS
+   POP ES
+   IRETD ;中断返回32位操作数大小
+
+_asm_int_handler27:
+    PUSH ES
+    PUSH DS
+    PUSHAD ;push了一大堆寄存器
+    MOV EAX, ESP
+    PUSH EAX
+    MOV AX, SS
+    MOV DS, AX
+    MOV ES, AX
+    CALL _int_handler27
+    POP EAX
+    POPAD ;pop了一大堆寄存器
+    POP DS
+    POP ES
+    IRETD
+
+_asm_int_handler2c:
+    PUSH ES
+    PUSH DS
+    PUSHAD
+    MOV EAX, ESP
+    PUSH EAX
+    MOV AX, SS
+    MOV DS, AX
+    MOV ES, AX
+    CALL _int_handler2c
+    POP EAX
+    POPAD
+    POP DS
+    POP ES
+    IRETD
+
+
