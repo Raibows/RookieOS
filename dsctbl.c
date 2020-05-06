@@ -28,8 +28,8 @@ void init_gdt_idt(void) {
 	/* IDT设置*/
 	// 2<<3代表使用第二个段，右移3位是因为低三位必须是0
 	set_gatedesc(idt + 0x21, (int)asm_int_handler21, 2<<3, AR_INTGATE32);
-	set_gatedesc(idt + 0x27, (int)asm_int_handler27, 2<<8, AR_INTGATE32);
-	set_gatedesc(idt + 0x2c, (int)asm_int_handler2c, 2<<8, AR_INTGATE32);
+	set_gatedesc(idt + 0x27, (int)asm_int_handler27, 2<<3, AR_INTGATE32);
+	set_gatedesc(idt + 0x2c, (int)asm_int_handler2c, 2<<3, AR_INTGATE32);
 
 	return;
 }

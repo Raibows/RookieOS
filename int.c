@@ -1,4 +1,8 @@
 #include "bootpack.h"
+#define PORT_KEYDAT 0x0060
+
+
+struct FIFO8 keyfifo, mousefifo;
 
 void init_pic(void) {
     //pic 初始化，programmable interrupt controller
@@ -24,25 +28,26 @@ void init_pic(void) {
 
 void int_handler21(int* esp) {
     // 用于0x21的中断, keyboard
+	unsigned char data;
 	struct BootInfo* binfo = (struct BootInfo*) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrn_x, binfo->scrn_y, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-	putfonts8_asc(binfo->vram, binfo->scrn_x, 0, 0, COL8_FFFFFF, "INT 21 (IRQ-1) : PS/2 keyboard");
-	while (1)
-	{
-		io_hlt();
-	}
+	io_out8(PIC0_OCW2, 0x61); //通知pic-irq01受理完毕
+	data = io_in8(PORT_KEYDAT);
+	fifo8_put(&keyfifo, data);
 
+	//sprintf(s, "%02x", data);
+	//boxfill8(binfo->vram, binfo->scrn_x, binfo->scrn_y, COL8_000000, 0, 0, 32 * 8 - 1, 15);
+	//putfonts8_asc(binfo->vram, binfo->scrn_x, 0, 0, COL8_FFFFFF, s);
+	return;
 }
 
 void int_handler2c(int *esp) {
     /* 来自PS/2鼠标的中断 */
-	struct BootInfo* binfo = (struct BootInfo*) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrn_x, binfo->scrn_y, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-	putfonts8_asc(binfo->vram, binfo->scrn_x, 0, 0, COL8_FFFFFF, "INT 2C (IRQ-12) : PS/2 mouse");
-	while (1)
-	{
-		io_hlt();
-	}
+    unsigned char data;
+    io_out8(PIC1_OCW2, 0x64);	// 通知PIC IRQ-12 已经受理完毕 先从
+    io_out8(PIC0_OCW2, 0x62);	// 通知PIC IRQ-02 已经受理完毕  后主
+	data = io_in8(PORT_KEYDAT);
+	fifo8_put(&mousefifo, data);
+    return;
 }
 
 void int_handler27(int *esp) {
@@ -56,3 +61,18 @@ PIC0中断的不完整策略
 */
 	return;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

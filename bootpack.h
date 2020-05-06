@@ -92,6 +92,18 @@ void init_gdt_idt(void);
 #define AR_INTGATE32 0x008e
 
 
+/*fifo.c*/
+struct FIFO8 {
+    unsigned char* buf;
+    int w, r, size, free, flags;
+};
+void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
+int fifo8_put(struct FIFO8* fifo, unsigned char data);
+int fifo8_get(struct FIFO8* fifo);
+int fifo8_status(struct FIFO8* fifo);
+
+
+
 /*int.c*/
 void init_pic(void);
 void int_handler21(int* esp);
@@ -109,6 +121,9 @@ void int_handler27(int *esp);
 #define PIC1_ICW2 0x00a1
 #define PIC1_ICW3 0x00a1
 #define PIC1_ICW4 0x00a1
+
+
+
 
 
 
