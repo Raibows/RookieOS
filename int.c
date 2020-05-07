@@ -29,14 +29,10 @@ void init_pic(void) {
 void int_handler21(int* esp) {
     // 用于0x21的中断, keyboard
 	unsigned char data;
-	struct BootInfo* binfo = (struct BootInfo*) ADR_BOOTINFO;
 	io_out8(PIC0_OCW2, 0x61); //通知pic-irq01受理完毕
 	data = io_in8(PORT_KEYDAT);
 	fifo8_put(&keyfifo, data);
-
-	//sprintf(s, "%02x", data);
-	//boxfill8(binfo->vram, binfo->scrn_x, binfo->scrn_y, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-	//putfonts8_asc(binfo->vram, binfo->scrn_x, 0, 0, COL8_FFFFFF, s);
+	
 	return;
 }
 

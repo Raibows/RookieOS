@@ -24,7 +24,7 @@ void asm_int_handler2c(void);
 
 
 /*graphic.c*/
-int check_pos(int x, int limit);
+int check_pos(int x, int low, int high);
 void init_palette(void);
 void set_palette(int start, int end, unsigned char *rgb);
 void boxfill8(char* vram, int XSIZE, int YSIZE, unsigned char color, int x0, int y0, int x1, int y1);
@@ -121,6 +121,13 @@ void int_handler27(int *esp);
 #define PIC1_ICW2 0x00a1
 #define PIC1_ICW3 0x00a1
 #define PIC1_ICW4 0x00a1
+
+
+/*bootpack.c*/
+struct MOUSE_DEC{
+    unsigned char buf[3], phase;
+    int x, y, btn;
+};
 
 
 

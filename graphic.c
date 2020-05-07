@@ -104,9 +104,9 @@ void set_palette(int start, int end, unsigned char *rgb) {
     return;
 }
 
-int check_pos(int x, int limit) {
-	if (x >= limit) return limit-1;
-	if (x < 0) return 0;
+int check_pos(int x, int low, int high) {
+	if (x > high) return high;
+	if (x < low) return low;
 	return x;
 }
 
@@ -117,8 +117,6 @@ void boxfill8(char* vram, int XSIZE, int YSIZE, unsigned char color, int x0, int
 	相应的对应到内存就是 head + y * xsize + x
 	*/
 	int i, j;
-	x1 = check_pos(x1, XSIZE);
-	y1 = check_pos(y1, YSIZE);
 	for (i=y0; i<=y1; ++i)
 	{
 		for (j=x0; j<=x1; ++j) vram[i*XSIZE+j] = color;
