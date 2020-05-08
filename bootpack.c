@@ -3,9 +3,8 @@
 #include "bootpack.h"
 
 extern struct FIFO8 keyfifo, mousefifo;
-void init_keyboard(void);
-void enable_mouse(struct MOUSE_DEC* mdec);
-int mouse_decode(struct MOUSE_DEC* mdec, unsigned char data);
+unsigned int memtest(unsigned int start, unsigned int end);
+
 
 void HariMain (void) {
     char* vram;
@@ -36,8 +35,11 @@ void HariMain (void) {
     
     enable_mouse(&mdec);
 	
-	
-	
+    unsigned int free_mem = memtest(0x00400000, 0xbfffffff) / 1024 / 1024;
+    sprintf(s, "right memory: %u MB", free_mem);
+    boxfill8(vram, binfo->scrn_x, binfo->scrn_y, COL8_000000, 0, 32, strlen(s)*8-1, 47);
+	putfonts8_asc(vram, binfo->scrn_x, 0, 32, COL8_FFFFFF, s);
+    
     int data;
 
 	while (1)
@@ -85,84 +87,86 @@ void HariMain (void) {
     }
 }
 
-#define PORT_KEYDAT	0x0060
-#define PORT_KEYSTA	0x0064
-#define PORT_KEYCMD	0x0064
-#define KEYSTA_SEND_NOTREADY 0x02
-#define KEYCMD_WRITE_MODE 0x60
-#define KBC_MODE 0x47
-#define KEYCMD_SENDTO_MOUSE	0xd4
-#define MOUSECMD_ENABLE	0xf4
 
-void wait_KBC_sendready(void) {
-    /*
-     * 等待键盘控制电路准备完毕
-     * 使用KEYSTA_SEND_NOTREADY，来判断低二位应该是0就对了
-     * */
-    while (1)
+
+
+#define EFLAGS_AC_BIT 0x00040000
+#define CR0_CACHE_DISABLE 0x60000000
+
+
+unsigned int memtest(unsigned int start, unsigned int end) {
+    char flag486 = 0; //only >= 486 use cpu cache
+    unsigned int eflag, cr0, i;
+    eflag = io_load_eflags();
+    if ((eflag & EFLAGS_AC_BIT) != 0) flag486 = 1; // 如果是386，即使设定AC=1，AC的值还会自动回到0
+    eflag &= ~EFLAGS_AC_BIT; // AC-bit = 0
+    io_store_eflags(eflag);
+    
+    if (flag486 != 0) //486
     {
-        if ((io_in8(PORT_KEYSTA) & KEYSTA_SEND_NOTREADY) == 0) return;
+        cr0 = load_cr0();
+        cr0 |= CR0_CACHE_DISABLE; /* 禁止缓存 */
+        store_cr0(cr0);
     }
+    
+    i = memtest_sub(start, end);
+    
+    if (flag486 != 0) {
+        cr0 = load_cr0();
+        cr0 &= ~CR0_CACHE_DISABLE; /* 允许缓存 */
+        store_cr0(cr0);
+    }
+    
+    return i;
 }
 
-void init_keyboard(void) {
+
+#define MEMMAN_FREES 4090
+
+struct FreeInfo {
+    unsigned int addr, size;
+};
+
+struct MemMan {
     /*
-     * 初始化键盘控制电路
+     * frees: 可使用内存块
+     * maxfrees： 观察到的最多内存块数量
+     * lostsize： 累计释放失败的内存大小
+     * losts： 释放失败次数
      */
-    wait_KBC_sendready();
-    io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
-    wait_KBC_sendready();
-    io_out8(PORT_KEYDAT, KBC_MODE);
+    int frees, maxfrees, lostsize, losts;
+    struct FreeInfo pool[MEMMAN_FREES];
+};
+
+void memman_init(struct MemMan* man) {
+    man->frees = 0;
+    man->maxfrees = 0;
+    man->losts = 0;
+    man->lostsize = 0;
     return;
 }
 
-void enable_mouse(struct MOUSE_DEC* mdec) {
+unsigned int memman_total(struct MemMan* man) {
     /*
-     * 激活鼠标
-     * */
-    wait_KBC_sendready();
-    io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
-    wait_KBC_sendready();
-    io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-    mdec->phase = 0; // 等待0xfa
-    return; // 顺利的话，键盘控制器会返回ACK(0xfa)
-}
-
-int mouse_decode(struct MOUSE_DEC* mdec, unsigned char data) {
-    /*
-     * decode mouse
+     * 返回可用内存大小
      */
-    if (mdec->phase == 0)
-    {
-        if (data == 0xfa) mdec->phase = 1;
-        return 0;
-    }
-    if (mdec->phase == 1 && (data & 0xc8) != 0x08) return -1; //第1字节不正确
-    mdec->buf[mdec->phase-1] = data;
-    ++mdec->phase;
-    if (mdec->phase == 4)
-    {
-        mdec->phase = 1;
-        mdec->btn = mdec->buf[0] & 0x07;
-        mdec->x = mdec->buf[1];
-        mdec->y = mdec->buf[2];
-        if ((mdec->buf[0] & 0x10) != 0) {
-            mdec->x |= 0xffffff00;
-        }
-        if ((mdec->buf[0] & 0x20) != 0) {
-            mdec->y |= 0xffffff00;
-        }
-        /* 鼠标的y方向与画面符号相反 */
-        mdec->y = -mdec->y;
-        return 1;
-    }
-    return -1;
+    unsigned int i = 0, t=0;
+    for (; i<man->frees; ++i) t += man->pool[i].size;
+    return t;
 }
 
-
-
-
-
+unsigned int memman_alloc(struct MemMan* man, unsigned int size) {
+    unsigned int i, a;
+    for (i=0; i<man->frees; ++i)
+    {
+        if (man->pool[i].size >= size)
+        {
+            a = man->pool[i].addr;
+            man->pool[i].addr += size;
+            man->pool[i].size -= size;
+        }
+    }
+}
 
 
 

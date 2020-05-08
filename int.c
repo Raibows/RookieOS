@@ -2,7 +2,6 @@
 #define PORT_KEYDAT 0x0060
 
 
-struct FIFO8 keyfifo, mousefifo;
 
 void init_pic(void) {
     //pic 初始化，programmable interrupt controller
@@ -26,26 +25,6 @@ void init_pic(void) {
 	return;
 }
 
-void int_handler21(int* esp) {
-    // 用于0x21的中断, keyboard
-	unsigned char data;
-	io_out8(PIC0_OCW2, 0x61); //通知pic-irq01受理完毕
-	data = io_in8(PORT_KEYDAT);
-	fifo8_put(&keyfifo, data);
-	
-	return;
-}
-
-void int_handler2c(int *esp) {
-    /* 来自PS/2鼠标的中断 */
-    unsigned char data;
-    io_out8(PIC1_OCW2, 0x64);	// 通知PIC IRQ-12 已经受理完毕 先从
-    io_out8(PIC0_OCW2, 0x62);	// 通知PIC IRQ-02 已经受理完毕  后主
-	data = io_in8(PORT_KEYDAT);
-	fifo8_put(&mousefifo, data);
-    return;
-}
-
 void int_handler27(int *esp) {
 /* 
 PIC0中断的不完整策略 
@@ -57,6 +36,7 @@ PIC0中断的不完整策略
 */
 	return;
 }
+
 
 
 

@@ -21,7 +21,9 @@ void write_mem8(int addr, int data);
 void asm_int_handler21(void);
 void asm_int_handler27(void);
 void asm_int_handler2c(void);
-
+int load_cr0(void);
+void store_cr0(int cr0);
+unsigned int memtest_sub(unsigned int start, unsigned int end);
 
 /*graphic.c*/
 int check_pos(int x, int low, int high);
@@ -106,8 +108,6 @@ int fifo8_status(struct FIFO8* fifo);
 
 /*int.c*/
 void init_pic(void);
-void int_handler21(int* esp);
-void int_handler2c(int *esp);
 void int_handler27(int *esp);
 #define PIC0_ICW1 0x0020
 #define PIC0_OCW2 0x0020
@@ -123,12 +123,29 @@ void int_handler27(int *esp);
 #define PIC1_ICW4 0x00a1
 
 
-/*bootpack.c*/
+
+
+
+/*keyboard and mouse*/
 struct MOUSE_DEC{
     unsigned char buf[3], phase;
     int x, y, btn;
 };
+void int_handler21(int* esp);
+void int_handler2c(int *esp);
+void wait_KBC_sendready(void);
+void init_keyboard(void);
+void enable_mouse(struct MOUSE_DEC* mdec);
+int mouse_decode(struct MOUSE_DEC* mdec, unsigned char data);
 
+#define PORT_KEYDAT	0x0060
+#define PORT_KEYSTA	0x0064
+#define PORT_KEYCMD	0x0064
+#define KEYSTA_SEND_NOTREADY 0x02
+#define KEYCMD_WRITE_MODE 0x60
+#define KBC_MODE 0x47
+#define KEYCMD_SENDTO_MOUSE	0xd4
+#define MOUSECMD_ENABLE	0xf4
 
 
 

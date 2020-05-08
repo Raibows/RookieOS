@@ -1,6 +1,7 @@
 TOOLPATH = ./tolset/z_tools/
 INCPATH  = ./tolset/z_tools/haribote/
-OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj int.obj fifo.obj
+OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj \
+                dsctbl.obj int.obj fifo.obj mouse.obj keyboard.obj
 BINPATH = ./bin/
 
 
