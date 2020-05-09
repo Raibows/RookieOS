@@ -43,11 +43,11 @@ asmhead.bin : asmhead.asm Makefile
 
 
 
-bootpack.obj : bootpack.asm Makefile
-	$(NASK) bootpack.asm bootpack.obj bootpack.lst
+# bootpack.obj : bootpack.asm Makefile
+#	$(NASK) bootpack.asm bootpack.obj bootpack.lst
 
-naskfunc.obj : naskfunc.asm Makefile
-	$(NASK) naskfunc.asm naskfunc.obj naskfunc.lst
+# naskfunc.obj : naskfunc.asm Makefile
+#	$(NASK) naskfunc.asm naskfunc.obj naskfunc.lst
 
 hankaku.bin : ./font/hankaku.txt Makefile
 	$(MAKEFONT) ./font/hankaku.txt hankaku.bin
