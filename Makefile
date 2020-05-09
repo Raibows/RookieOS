@@ -1,7 +1,8 @@
 TOOLPATH = ./tolset/z_tools/
 INCPATH  = ./tolset/z_tools/haribote/
 OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj \
-                dsctbl.obj int.obj fifo.obj mouse.obj keyboard.obj
+                dsctbl.obj int.obj fifo.obj mouse.obj keyboard.obj \
+                memory.obj sheet.obj
 BINPATH = ./bin/
 
 
@@ -99,9 +100,7 @@ mv_all:
 
 run :
 	$(MAKE) img
-	$(COPY) haribote.img .\tolset\z_tools\qemu\fdimage0.bin
-	$(MAKE) -C ./tolset/z_tools/qemu
-	# $(MAKE) mv_all
+	qemu-system-x86_64 -L . -m 32 -rtc base=localtime -fda haribote.img
 
 install :
 	$(MAKE) img
@@ -118,6 +117,7 @@ clean :
 	-$(DEL) bootpack.bim
 	-$(DEL) bootpack.hrb
 	-$(DEL) haribote.sys
+	-$(DEL) haribote.img
 	
 
 src_only :

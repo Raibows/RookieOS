@@ -124,8 +124,6 @@ void int_handler27(int *esp);
 
 
 
-
-
 /*keyboard and mouse*/
 struct MOUSE_DEC{
     unsigned char buf[3], phase;
@@ -150,12 +148,69 @@ int mouse_decode(struct MOUSE_DEC* mdec, unsigned char data);
 
 
 
+/*memory.c*/
+#define MEMMAN_ADDR 0x003c0000
+#define MEMMAN_FREES 4090
+#define EFLAGS_AC_BIT 0x00040000
+#define CR0_CACHE_DISABLE 0x60000000
+
+struct FreeInfo {
+    unsigned int addr, size;
+};
+
+struct MemMan {
+    /*
+     * frees: 可使用内存块
+     * maxfrees： 观察到的最多内存块数量
+     * lostsize： 累计释放失败的内存大小
+     * losts： 释放失败次数
+     */
+    int frees, maxfrees, lostsize, losts;
+    struct FreeInfo pool[MEMMAN_FREES];
+};
+
+unsigned int memtest(unsigned int start, unsigned int end);
+void memman_init(struct MemMan* man);
+unsigned int memman_total(struct MemMan* man);
+unsigned int memman_alloc(struct MemMan* man, unsigned int size);
+int memman_free(struct MemMan* man, unsigned int addr, unsigned int size);
+unsigned int memman_alloc_4kB(struct MemMan* man, unsigned int size);
+int memman_free_4kB(struct MemMan* man, unsigned int addr, unsigned int size);
 
 
+/*sheet.c*/
+#define MAX_SHEETS 256
+#define SHEET_USE 1
 
+struct Sheet{
+    /*
+     * buf为该图层内容的地址
+     * col_inv透明色号
+     * height表示图层高度
+     */
+    unsigned char* buf;
+    int bxsize, bysize, vx, vy, col_inv, flags, height;
+};
 
-
-
+struct SheetControl{
+    /*
+     * top表示最上层图层高度
+     * sheets指针用来访问堆叠起来的图层，高度从小到大
+     * sheets_pool存储真正的buf内容，可以被释放、分配，作为图层pool
+     */
+    unsigned char* vram;
+    int xsize, ysize, top;
+    struct Sheet* sheets[MAX_SHEETS];
+    struct Sheet sheets_pool[MAX_SHEETS];
+};
+struct SheetControl* sheetcontroll_init(struct MemMan* man, unsigned char* vram, int xsize, int ysize);
+struct Sheet* sheet_alloc(struct SheetControl* ctl);
+void sheet_setbuf(struct Sheet* sht, unsigned char* buf, int xsize, int ysize, int col_inv);
+void sheet_updown(struct SheetControl* ctl, struct Sheet* sht, int height);
+void sheet_refreshall(struct SheetControl* ctl);
+void sheet_slide(struct SheetControl* ctl, struct Sheet* sht, int vx0, int vy0);
+void sheet_free(struct SheetControl* ctl, struct Sheet* sht);
+void sheet_refresh(struct SheetControl* ctl, struct Sheet* sht, int bx0, int by0, int bx1, int by1);
 
 
 

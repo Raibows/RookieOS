@@ -23,7 +23,7 @@ int fifo8_put(struct FIFO8* fifo, unsigned char data) {
     if (fifo->free == 0)
     {
         //溢出
-        fifo->flags != FLAGS_OVERRUN;
+        fifo->flags |= FLAGS_OVERRUN;
         return -1;
     }
     fifo->buf[fifo->w] = data;
