@@ -3,6 +3,7 @@
 
 struct cc{
 	int x;
+	int y[3];
 };
 
 struct cc ct;
@@ -17,8 +18,9 @@ int main() {
 	
 	struct cc* cp;
 	cp = func();
-	printf("%d", cp->x);
-
+	printf("%d\n", cp->x);
+	printf("pointer = %d\n", sizeof(cp));
+	printf("struct = %d\n", sizeof(*cp));
 
 	return 0;
 }

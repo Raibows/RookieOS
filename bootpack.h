@@ -29,7 +29,7 @@ unsigned int memtest_sub(unsigned int start, unsigned int end);
 int check_pos(int x, int low, int high);
 void init_palette(void);
 void set_palette(int start, int end, unsigned char *rgb);
-void boxfill8(char* vram, int XSIZE, int YSIZE, unsigned char color, int x0, int y0, int x1, int y1);
+void boxfill8(char* vram, int XSIZE, unsigned char color, int x0, int y0, int x1, int y1);
 void init_screen(char* vram, int XSIZE, int YSIZE);
 void putfont8(char* vram, int XSIZE, int x, int y, char color, char* font);
 void putfonts8_asc(char* vram, int XSIZE, int x, int y, char color, unsigned char* fonts);
@@ -190,6 +190,7 @@ struct Sheet{
      */
     unsigned char* buf;
     int bxsize, bysize, vx, vy, col_inv, flags, height;
+    struct SheetControl* ctl;
 };
 
 struct SheetControl{
@@ -197,8 +198,10 @@ struct SheetControl{
      * top表示最上层图层高度
      * sheets指针用来访问堆叠起来的图层，高度从小到大
      * sheets_pool存储真正的buf内容，可以被释放、分配，作为图层pool
+     * map相当于一个地图，他记录vram上面的点属于哪一个sheet
      */
     unsigned char* vram;
+    unsigned char* map;
     int xsize, ysize, top;
     struct Sheet* sheets[MAX_SHEETS];
     struct Sheet sheets_pool[MAX_SHEETS];
@@ -206,11 +209,12 @@ struct SheetControl{
 struct SheetControl* sheetcontroll_init(struct MemMan* man, unsigned char* vram, int xsize, int ysize);
 struct Sheet* sheet_alloc(struct SheetControl* ctl);
 void sheet_setbuf(struct Sheet* sht, unsigned char* buf, int xsize, int ysize, int col_inv);
-void sheet_updown(struct SheetControl* ctl, struct Sheet* sht, int height);
+void sheet_updown(struct Sheet* sht, int height);
 void sheet_refreshall(struct SheetControl* ctl);
-void sheet_slide(struct SheetControl* ctl, struct Sheet* sht, int vx0, int vy0);
-void sheet_free(struct SheetControl* ctl, struct Sheet* sht);
-void sheet_refresh(struct SheetControl* ctl, struct Sheet* sht, int bx0, int by0, int bx1, int by1);
+void sheet_slide(struct Sheet* sht, int vx0, int vy0);
+void sheet_free(struct Sheet* sht);
+void sheet_refresh(struct Sheet* sht, int bx0, int by0, int bx1, int by1);
+void sheet_refreshsub(struct SheetControl* ctl, int vx0, int vy0, int vx1, int vy1, int h0, int h1);
 
 
 
