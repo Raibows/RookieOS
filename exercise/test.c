@@ -21,6 +21,9 @@ int main() {
 	printf("%d\n", cp->x);
 	printf("pointer = %d\n", sizeof(cp));
 	printf("struct = %d\n", sizeof(*cp));
+	unsigned char ttt;
+	printf("unsigned int size = %d\n", sizeof(ttt));
+
 
 	return 0;
 }

@@ -21,6 +21,7 @@ void write_mem8(int addr, int data);
 void asm_int_handler21(void);
 void asm_int_handler27(void);
 void asm_int_handler2c(void);
+void asm_int_handler20(void);
 int load_cr0(void);
 void store_cr0(int cr0);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
@@ -218,6 +219,37 @@ void sheet_refreshsub(struct SheetControl* ctl, int vx0, int vy0, int vx1, int v
 
 
 
+/*timer.c*/
+#define MAX_TIMER 500
+#define TIMER_COUNT_PER_SECOND 100
+
+struct Timer{
+    /*
+     * timeout，用来倒计时，当为0时，向fifo发送数据
+     * flags 记录定时器状态
+     */
+    unsigned int timeout;
+    struct FIFO8* fifo;
+    unsigned char data, flags;
+};
+
+struct TimerControl{
+    /*
+     * count用来计数中断次数，每100=1秒，因为每秒100次中断
+     * next用来记录下一个到期的时刻
+     * timer_order按timeout序存储timer
+     */
+    unsigned int count, next, using_num;
+    struct Timer* timer_order[MAX_TIMER];
+    struct Timer timers[MAX_TIMER];
+};
+
+void init_pit(void);
+void int_handler20(int* esp);
+struct Timer* timer_alloc(void);
+void timer_free(struct Timer* timer);
+void timer_init(struct Timer* timer, struct FIFO8* fifo, unsigned char data);
+void timer_settime(struct Timer* timer, unsigned int timeout);
 
 
 

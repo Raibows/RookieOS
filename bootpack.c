@@ -61,17 +61,18 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
 
 
 extern struct FIFO8 keyfifo, mousefifo;
-
+extern struct TimerControl timerctl;
 
 void HariMain (void) {
-    unsigned char s[40], keybuf[32], mousebuf[128];
+    unsigned char s[40], keybuf[32], mousebuf[256], timerbuf[8], timerbuf2[8], timerbuf3[8];
     struct BootInfo* binfo = (struct BootInfo*) 0x0ff0;
     struct MOUSE_DEC mdec;
     struct MemMan* man = (struct MemMan*) MEMMAN_ADDR;
     struct SheetControl* shtctl;
     struct Sheet *sht_back, *sht_mouse, *sht_win;
     unsigned char *buf_back, *buf_win, *buf_mouse;
-    int count = 0;
+    struct FIFO8 timer_fifo, timer_fifo2, timer_fifo3;
+    struct Timer *timer, *timer2, *timer3;
 //    unsigned char buf_mouse[256];
     
     int XSIZE = binfo->scrn_x;
@@ -80,9 +81,13 @@ void HariMain (void) {
     init_gdt_idt();
     init_pic();
     io_sti();
-    fifo8_init(&keyfifo, 32, keybuf);
-    fifo8_init(&mousefifo, 128, mousebuf);
-    io_out8(PIC0_IMR, 0xf9); /* 开放PIC1和键盘中断(11111001) */
+    fifo8_init(&keyfifo, sizeof(keybuf), keybuf);
+    fifo8_init(&mousefifo, sizeof(mousebuf), mousebuf);
+    fifo8_init(&timer_fifo, sizeof(timerbuf), timerbuf);
+    fifo8_init(&timer_fifo2, sizeof(timerbuf2), timerbuf2);
+    fifo8_init(&timer_fifo3, sizeof(timerbuf3), timerbuf3);
+    init_pit();
+    io_out8(PIC0_IMR, 0xf8); /* 开放PIC1和键盘中断和PIT，timer中断(11111000) */
     io_out8(PIC1_IMR, 0xef); /* 开放鼠标中断(11101111) */
     init_keyboard();
     enable_mouse(&mdec);
@@ -119,17 +124,31 @@ void HariMain (void) {
     putfonts8_asc(buf_back, XSIZE, 0, 32, COL8_FFFFFF, s);
     sheet_refresh(sht_back, 0, 0, XSIZE, 48);
     
+    timer = timer_alloc();
+    timer2 = timer_alloc();
+    timer3 = timer_alloc();
+    timer_init(timer, &timer_fifo, 1);
+    timer_init(timer2, &timer_fifo2, 1);
+    timer_init(timer3, &timer_fifo3, 1);
+    timer_settime(timer, 10 * TIMER_COUNT_PER_SECOND);
+    timer_settime(timer2, 3 * TIMER_COUNT_PER_SECOND);
+    timer_settime(timer3, 0.5 * TIMER_COUNT_PER_SECOND);
+    
+    
     int data;
-
+    
     while (1)
     {
-        ++count;
-        sprintf(s, "%010d", count);
+        sprintf(s, "%010u", timerctl.count);
         boxfill8(buf_win, 160, COL8_C6C6C6, 24, 30, 24+strlen(s)*8, 45);
         putfonts8_asc(buf_win, 160, 24, 30, COL8_000000, s);
         sheet_refresh(sht_win, 24, 30, 24+strlen(s)*8-1, 45);
         io_cli(); //clear interrupt flags
-        if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) == 0) io_sti();
+        if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) + fifo8_status(&timer_fifo)
+            + fifo8_status(&timer_fifo2) + fifo8_status(&timer_fifo3) == 0)
+        {
+            io_sti();
+        }
         else
         {
             if (fifo8_status(&keyfifo) != 0)
@@ -158,7 +177,38 @@ void HariMain (void) {
                 putfonts8_asc(buf_back, XSIZE, 0, 16, COL8_FFFFFF, s);
                 sheet_refresh(sht_back, 0, 16, strlen(s)*8+1, 32);
                 sheet_slide(sht_mouse, mx, my);
-                
+            }
+            else if (fifo8_status(&timer_fifo) != 0)
+            {
+                data = fifo8_get(&timer_fifo);
+                io_sti();
+                putfonts8_asc(buf_back, XSIZE, 0, 48, COL8_000000, "Ten seconds!");
+                sheet_refresh(sht_back, 0, 48, 12*8-1, 48+15);
+            }
+            else if (fifo8_status(&timer_fifo2) != 0)
+            {
+                data = fifo8_get(&timer_fifo2);
+                io_sti();
+                putfonts8_asc(buf_back, XSIZE, 0, 64, COL8_000000, "3 seconds!");
+                sheet_refresh(sht_back, 0, 64, 10*8-1, 64+15);
+            }
+            else if (fifo8_status(&timer_fifo3) != 0)
+            {
+                //模拟闪烁
+                data = fifo8_get(&timer_fifo3);
+                io_sti();
+                if (data == 1)
+                {
+                    timer_init(timer3, &timer_fifo3, 0);
+                    boxfill8(buf_back, XSIZE, COL8_FFFFFF, 50, 80, 57, 95);
+                }
+                else if (data == 0)
+                {
+                    timer_init(timer3, &timer_fifo3, 1);
+                    boxfill8(buf_back, XSIZE, COL8_008484, 50, 80, 57, 95);
+                }
+                sheet_refresh(sht_back, 50, 80, 58, 96);
+                timer_settime(timer3, 0.5 * TIMER_COUNT_PER_SECOND);
             }
             
         }

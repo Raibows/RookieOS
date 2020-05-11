@@ -2,7 +2,7 @@
 
 void init_gdt_idt(void) {
 	// init global (segment) description table 8bytes
-	// init interupt description table
+	// init interrupt description table
     // 可以用“调色板”的方式事先定义好8192个段
 
 	// from 0x270000 to 0x27ffff = 65536bytes = 8bytes * 8192
@@ -26,7 +26,8 @@ void init_gdt_idt(void) {
 	load_idtr(0x7ff, 0x0026f800);
 	
 	/* IDT设置*/
-	// 2<<3代表使用第二个段，右移3位是因为低三位必须是0
+	// 2<<3代表使用第二个段，左移3位是因为低三位必须是0
+    set_gatedesc(idt + 0x20, (int)asm_int_handler20, 2<<3, AR_INTGATE32);
 	set_gatedesc(idt + 0x21, (int)asm_int_handler21, 2<<3, AR_INTGATE32);
 	set_gatedesc(idt + 0x27, (int)asm_int_handler27, 2<<3, AR_INTGATE32);
 	set_gatedesc(idt + 0x2c, (int)asm_int_handler2c, 2<<3, AR_INTGATE32);

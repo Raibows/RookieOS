@@ -14,9 +14,9 @@ GLOBAL _io_out8, _io_out16, _io_out32
 GLOBAL _io_load_eflags, _io_store_eflags
 GLOBAL _write_mem8
 GLOBAL _load_gdtr, _load_idtr
-GLOBAL _asm_int_handler21, _asm_int_handler27, _asm_int_handler2c
+GLOBAL _asm_int_handler21, _asm_int_handler27, _asm_int_handler2c, _asm_int_handler20
 GLOBAL _load_cr0, _store_cr0, _memtest_sub
-EXTERN _int_handler21, _int_handler27, _int_handler2c
+EXTERN _int_handler21, _int_handler27, _int_handler2c, _int_handler20
     
 
 
@@ -164,6 +164,22 @@ _asm_int_handler2c:
     POPAD
     POP DS
     POP ES
+    IRETD
+
+_asm_int_handler20:
+    PUSH ES
+    PUSH DS
+    PUSHAD
+    MOV	 EAX,ESP
+    PUSH EAX
+    MOV	 AX,SS
+    MOV	 DS,AX
+    MOV	 ES,AX
+    CALL _int_handler20
+    POP	 EAX
+    POPAD
+    POP	DS
+    POP	ES
     IRETD
 
 _memtest_sub:  ; unsigned int memtest_sub(unsigned int start, unsigned int end)
