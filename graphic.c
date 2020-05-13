@@ -112,9 +112,11 @@ int check_pos(int x, int low, int high) {
 
 void boxfill8(char* vram, int XSIZE, unsigned char color, int x0, int y0, int x1, int y1) {
 	/*
-	vram坐标左上角为(0, 0), 右下角为(ysize-1, xsize-1)
-	也就是说横着的是x轴，竖着的是y轴
-	相应的对应到内存就是 head + y * xsize + x
+	 * vram坐标左上角为(0, 0), 右下角为(ysize-1, xsize-1)
+	 * 也就是说横着的是x轴，竖着的是y轴
+	 * 相应的对应到内存就是 head + y * xsize + x
+	 * 从左上角（x0, y0)到右下角(x1, y1)进行上色
+	 * 注意均为vram的相对坐标
 	*/
 	int i, j;
 	for (i=y0; i<=y1; ++i)
@@ -177,6 +179,25 @@ void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s) 
     putfonts8_asc(sht->buf, sht->bxsize, x, y, c, s);
     sheet_refresh(sht, x, y, x + l * 8, y + 16);
 }
+
+void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title) {
+    xsize = check_pos(xsize, 80, 300);
+    ysize = check_pos(ysize, 32, 200);
+    unsigned char* buf = (unsigned char*) memman_alloc_4kB(man, xsize * ysize);
+    sheet_setbuf(sht, buf, xsize, ysize, col_inv);
+    boxfill8(sht->buf, sht->bxsize, COL8_000000, 0, 0, xsize - 1, 15);
+    boxfill8(sht->buf, sht->bxsize, color, 0, 16, xsize - 1, ysize - 1);
+    putfonts8_asc_sht(sht, xsize / 2 - strlen(title) * 4, 0, COL8_FFFFFF, COL8_000000, title);
+    return;
+}
+
+
+
+
+
+
+
+
 
 
 

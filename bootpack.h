@@ -55,6 +55,7 @@ void putfonts8_asc(char* vram, int XSIZE, int x, int y, char color, unsigned cha
 void init_mouse_cursor8(char* mouse, char bc);
 void putblock8_8(char* vram, int XSIZE, int pxsize, int pysize, int px0, int py0, char* buf, int bxsize);
 void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s);
+void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title);
 
 #define COL8_000000 0   //黑 
 #define COL8_FF0000 1   //梁红 

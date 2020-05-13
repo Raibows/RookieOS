@@ -41,8 +41,8 @@ int main() {
 	unsigned char ttt;
 	printf("unsigned int size = %d\n", sizeof(ttt));
 	
-	char* st = "hello";
-	test(st);
+	char* st = "123456789";
+	test("123456");
 	testswitch(1);
 	return 0;
 }
