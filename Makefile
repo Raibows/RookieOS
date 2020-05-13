@@ -100,7 +100,11 @@ mv_all:
 
 run :
 	$(MAKE) img
-	qemu-system-x86_64 -L . -m 32 -rtc base=localtime -fda haribote.img
+	export SDL_VIDEODRIVER=directx
+	export QEMU_AUDIO_DRV=none
+	export QEMU_AUDIO_LOG_TO_MONITOR=0
+	# qemu-system-x86_64 -L . -m 32M -rtc base=localtime -fda haribote.img -vga std
+	$(MAKE) -C $(TOOLPATH)qemu/
 
 install :
 	$(MAKE) img

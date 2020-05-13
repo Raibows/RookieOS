@@ -1,9 +1,27 @@
+struct BootInfo;
+struct Sheet;
+struct SEGMENT_DESCRIPTOR;
+struct GATE_DESCRIPTOR;
+struct FIFO8;
+struct FIFO32;
+struct MOUSE_DEC;
+struct FreeInfo;
+struct MemMan;
+struct Sheet;
+struct SheetControl;
+struct Timer;
+struct TimerControl;
+
+
+#define NULL ((void *)0)
+
 /*asmhead.asm*/
 struct BootInfo {
 	char cyls, leds, vmode, reserve;
 	short scrn_x, scrn_y;
 	char* vram;
 };
+
 #define ADR_BOOTINFO 0x00000ff0
 
 
@@ -36,6 +54,7 @@ void putfont8(char* vram, int XSIZE, int x, int y, char color, char* font);
 void putfonts8_asc(char* vram, int XSIZE, int x, int y, char color, unsigned char* fonts);
 void init_mouse_cursor8(char* mouse, char bc);
 void putblock8_8(char* vram, int XSIZE, int pxsize, int pysize, int px0, int py0, char* buf, int bxsize);
+void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s);
 
 #define COL8_000000 0   //黑 
 #define COL8_FF0000 1   //梁红 
@@ -100,11 +119,18 @@ struct FIFO8 {
     unsigned char* buf;
     int w, r, size, free, flags;
 };
+struct FIFO32 {
+    int* buf;
+    int w, r, size, free, flags;
+};
 void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
 int fifo8_put(struct FIFO8* fifo, unsigned char data);
 int fifo8_get(struct FIFO8* fifo);
 int fifo8_status(struct FIFO8* fifo);
-
+void fifo32_init(struct FIFO32* fifo, int size, int* buf);
+int fifo32_put(struct FIFO32* fifo, int data);
+int fifo32_get(struct FIFO32* fifo);
+int fifo32_status(struct FIFO32* fifo);
 
 
 /*int.c*/
@@ -133,8 +159,8 @@ struct MOUSE_DEC{
 void int_handler21(int* esp);
 void int_handler2c(int *esp);
 void wait_KBC_sendready(void);
-void init_keyboard(void);
-void enable_mouse(struct MOUSE_DEC* mdec);
+void init_keyboard(struct FIFO32* fifo, int data);
+void enable_mouse(struct FIFO32* fifo, int data, struct MOUSE_DEC* mdec);
 int mouse_decode(struct MOUSE_DEC* mdec, unsigned char data);
 
 #define PORT_KEYDAT	0x0060
@@ -183,7 +209,7 @@ int memman_free_4kB(struct MemMan* man, unsigned int addr, unsigned int size);
 #define MAX_SHEETS 256
 #define SHEET_USE 1
 
-struct Sheet{
+struct Sheet {
     /*
      * buf为该图层内容的地址
      * col_inv透明色号
@@ -194,7 +220,7 @@ struct Sheet{
     struct SheetControl* ctl;
 };
 
-struct SheetControl{
+struct SheetControl {
     /*
      * top表示最上层图层高度
      * sheets指针用来访问堆叠起来的图层，高度从小到大
@@ -223,24 +249,26 @@ void sheet_refreshsub(struct SheetControl* ctl, int vx0, int vy0, int vx1, int v
 #define MAX_TIMER 500
 #define TIMER_COUNT_PER_SECOND 100
 
-struct Timer{
+struct Timer {
     /*
      * timeout，用来倒计时，当为0时，向fifo发送数据
      * flags 记录定时器状态
      */
+    struct Timer* next;
     unsigned int timeout;
-    struct FIFO8* fifo;
-    unsigned char data, flags;
+    struct FIFO32* fifo;
+    unsigned char flags;
+    int data;
 };
 
-struct TimerControl{
+struct TimerControl {
     /*
      * count用来计数中断次数，每100=1秒，因为每秒100次中断
-     * next用来记录下一个到期的时刻
-     * timer_order按timeout序存储timer
+     * next_expire_time用来记录下一个到期的时刻
+     * guard_timer是链表中的哨兵
      */
-    unsigned int count, next, using_num;
-    struct Timer* timer_order[MAX_TIMER];
+    unsigned int count, next_expire_time;
+    struct Timer* guard_timer;
     struct Timer timers[MAX_TIMER];
 };
 
@@ -248,7 +276,7 @@ void init_pit(void);
 void int_handler20(int* esp);
 struct Timer* timer_alloc(void);
 void timer_free(struct Timer* timer);
-void timer_init(struct Timer* timer, struct FIFO8* fifo, unsigned char data);
+void timer_init(struct Timer* timer, struct FIFO32* fifo, int data);
 void timer_settime(struct Timer* timer, unsigned int timeout);
 
 
