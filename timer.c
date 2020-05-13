@@ -62,7 +62,12 @@ struct Timer* timer_alloc(void) {
 }
 
 void timer_free(struct Timer* timer) {
-    timer->flags = TIMER_FLAGS_FREE;
+    /*
+     * 只有处于allocated的timer才可以被free
+     * 想象一下假如你的timer还没有timeout，就free掉，显然会矛盾
+     * 如果处于还没expire的状态，那么必须从guard那里遍历寻找，然后强制free【未实现】
+     */
+    if (timer->flags == TIMER_FLAGS_ALLOC) timer->flags = TIMER_FLAGS_FREE;
     return;
 }
 
@@ -73,7 +78,7 @@ void timer_init(struct Timer* timer, struct FIFO32* fifo, int data) {
 }
 
 void timer_settime(struct Timer* timer, unsigned int timeout) {
-    int e, i, j;
+    int e;
     timer->flags = TIMER_FLAGS_USING;
     timer->timeout = timeout + timerctl.count;
     e = io_load_eflags();
