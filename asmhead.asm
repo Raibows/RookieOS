@@ -171,6 +171,8 @@ pipelineflush:
 skip:
 		MOV		ESP,[EBX+12]	; 堆栈的初始化
 		JMP		DWORD 2*8:0x0000001b
+		;实际上jmp命令是向，eip寄存器（存储下一条指令地址的32位寄存器），赋值，这种称为near模式
+		;如果同时还更改了CS寄存器，就称为far模式，如JMP 2*8:0x1b这种形式就是2*8移入CS，0x1b移入EIP
 
 waitkbdout:
 		IN		 AL,0x64

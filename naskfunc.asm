@@ -16,6 +16,7 @@ GLOBAL _write_mem8
 GLOBAL _load_gdtr, _load_idtr
 GLOBAL _asm_int_handler21, _asm_int_handler27, _asm_int_handler2c, _asm_int_handler20
 GLOBAL _load_cr0, _store_cr0, _memtest_sub
+GLOBAL _load_tr, _task_switch4, _task_switch3, _far_jmp
 EXTERN _int_handler21, _int_handler27, _int_handler2c, _int_handler20
     
 
@@ -89,8 +90,11 @@ _io_store_eflags: ;void io_store_eflags(int eflags)
 
 _write_mem8: ; void write_mem8(int addr, int data)
     ;注意栈地址从高到低，一个结构体也好，一个数组也好，最开始的元素都在低地址
-    MOV ECX, [ESP+4] ;esp+4 to esp+8 = addr
-    MOV AL, [ESP+8] ;esp+8 to esp+12 = data
+    ;esp+0 到 esp+3是函数地址
+    ;一个函数包括参数，是从右到左依次入栈
+    ;所以函数名字在最低地址
+    MOV ECX, [ESP+4] ;esp+4 to esp+7 = addr
+    MOV AL, [ESP+8] ;esp+8 to esp+11 = data
     MOV [ECX], AL
     RET
 
@@ -216,7 +220,22 @@ mts_fin:
     POP EDI
     RET
     
-    
+_load_tr: ;task register
+    LTR [ESP+4]
+    RET
+
+_task_switch4: ;4为段地址，far jump
+    JMP 4*8:0
+    RET
+
+_task_switch3: ;3为段地址，far jump
+    JMP 3*8:0
+    RET
+
+_far_jmp:
+    ;esp+0到esp+3是函数地址
+    JMP FAR [ESP+4] ; esp+4开始到esp+7 -> eip esp+8到esp+11共4个字节 -> cs
+    RET
     
     
     

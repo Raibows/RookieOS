@@ -8,25 +8,29 @@
 #define TIMER_FLAGS_USING 2 //定时器运行中
 
 struct TimerControl timerctl;
+extern struct Timer* mt_timer;
 
 void int_handler20(int* esp) {
     io_out8(PIC0_OCW2, 0x60); // 把irq-00接收的信号通知给PIC
     ++timerctl.count;
     if (timerctl.count < timerctl.next_expire_time) return; //还没有到下一个timer时刻
     struct Timer* temp = timerctl.guard_timer->next;
+    char ts_flag = 0;
     while (temp != NULL)
     {
-        if (temp->timeout <= timerctl.count)
+        if (temp->timeout > timerctl.count) break;
+        if (temp != mt_timer)
         {
             temp->flags = TIMER_FLAGS_ALLOC;
             fifo32_put(temp->fifo, temp->data);
-            temp = temp->next;
         }
-        else if (temp->timeout > timerctl.count) break;
+        else ts_flag = 1;
+        temp = temp->next;
     }
     timerctl.guard_timer->next = temp;
     if (temp == NULL) timerctl.next_expire_time = timerctl.guard_timer->timeout;
     else timerctl.next_expire_time = temp->timeout;
+    if (ts_flag == 1) mt_task_switch();
     return;
 }
 
@@ -79,6 +83,7 @@ void timer_init(struct Timer* timer, struct FIFO32* fifo, int data) {
 
 void timer_settime(struct Timer* timer, unsigned int timeout) {
     int e;
+    timeout = timeout > 0 ? timeout : 1;
     timer->flags = TIMER_FLAGS_USING;
     timer->timeout = timeout + timerctl.count;
     e = io_load_eflags();

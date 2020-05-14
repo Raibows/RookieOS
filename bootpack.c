@@ -69,7 +69,20 @@ void make_textbox8(struct Sheet* sht, int x0, int y0, int sx, int sy, int c, cha
     return;
 }
 
-
+void task_b_main(struct Sheet* sht_back) {
+    char s[40];
+    unsigned int cnt = 0;
+    
+    while (1)
+    {
+        ++cnt;
+        io_cli();
+        sprintf(s, "%010d", cnt);
+        putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_000000, s);
+        io_sti();
+    }
+    
+}
 
 
 extern struct TimerControl timerctl;
@@ -164,6 +177,40 @@ void HariMain (void) {
             0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', 75, '5', 77, '+', '1', //79
             '2', '3', '0', '.' //83
     };
+    
+    
+    struct TSS32 tss_a, tss_b;
+    int task_b_esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024; //加64*1024是为了计算出栈底的地址（高地址）
+    task_b_esp -= 8;
+    tss_a.ldtr = 0;
+    tss_a.iomap = 0x40000000;
+    tss_b.ldtr = 0;
+    tss_b.iomap = 0x40000000;
+    tss_b.eip = (int) &task_b_main;
+    tss_b.eflags = 0x00000202; /* IF = 1; */
+    tss_b.eax = 0;
+    tss_b.ecx = 0;
+    tss_b.edx = 0;
+    tss_b.ebx = 0;
+    tss_b.esp = task_b_esp;
+    tss_b.ebp = 0;
+    tss_b.esi = 0;
+    tss_b.edi = 0;
+    tss_b.es = 1 * 8;
+    tss_b.cs = 2 * 8;
+    tss_b.ss = 1 * 8;
+    tss_b.ds = 1 * 8;
+    tss_b.fs = 1 * 8;
+    tss_b.gs = 1 * 8;
+    struct SEGMENT_DESCRIPTOR* gdt = (struct SEGMENT_DESCRIPTOR*) ADR_GDT;
+    set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32);
+    set_segmdesc(gdt + 4, 103, (int) &tss_b, AR_TSS32);
+    
+    
+    *((int*)(task_b_esp + 4)) = (int) sht_back;
+    mt_init();
+    
+    load_tr(3 * 8); //向task register标记当前任务是哪个段位置
     
     
     while (1)

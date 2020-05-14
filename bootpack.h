@@ -11,6 +11,7 @@ struct Sheet;
 struct SheetControl;
 struct Timer;
 struct TimerControl;
+struct TSS32;
 
 
 #define NULL ((void *)0)
@@ -42,6 +43,10 @@ void asm_int_handler2c(void);
 void asm_int_handler20(void);
 int load_cr0(void);
 void store_cr0(int cr0);
+void load_tr(int tr);
+void task_switch4(void);
+void task_switch3(void);
+void far_jmp(int eip, int cs);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 
 /*graphic.c*/
@@ -101,6 +106,20 @@ struct GATE_DESCRIPTOR {
 	short offset_high;
 };
 
+struct TSS32 {
+    /*
+     * task status segment
+     * 第一行表示的信息是这些寄存器的状态（会不会被写入啊等等）
+     * 第二行存储这些32位寄存器的信息
+     * 第三行为16位寄存器
+     *
+     */
+    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
+    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+    int es, cs, ss, ds, fs, gs;
+    int ldtr, iomap;
+};
+
 void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd, unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 void init_gdt_idt(void);
@@ -112,6 +131,7 @@ void init_gdt_idt(void);
 #define LIMIT_BOTPAK 0x0007ffff
 #define AR_DATA32_RW 0x4092
 #define AR_CODE32_ER 0x409a
+#define AR_TSS32 0x0089
 #define AR_INTGATE32 0x008e
 
 
@@ -279,6 +299,32 @@ struct Timer* timer_alloc(void);
 void timer_free(struct Timer* timer);
 void timer_init(struct Timer* timer, struct FIFO32* fifo, int data);
 void timer_settime(struct Timer* timer, unsigned int timeout);
+
+
+/* multitask.c */
+void mt_task_switch(void);
+void mt_init(void);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

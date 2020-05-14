@@ -15,8 +15,8 @@ void init_gdt_idt(void) {
 	{
 		set_segmdesc(gdt+i, 0, 0, 0);
 	}
-	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092); //段号为1的段，4GB，
-	set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a); //段号为2的段存储bootpack.hrb, 512KB
+	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW); //段号为1的段，4GB，
+	set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, AR_CODE32_ER); //段号为2的段存储bootpack.hrb, 512KB
 	load_gdtr(0xffff, 0x00270000);
 	// 中断有256种
 	for (i=0; i<256; ++i)
@@ -37,9 +37,9 @@ void init_gdt_idt(void) {
 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd, unsigned int limit, int base, int ar) {
 	/*
-	limit指段的大小，即段的字节数-1
-	base代表基址
-	ar=access right
+	 * 	limit指段的大小，即段的字节数-1
+	 * 	base代表基址
+	 * 	ar=access right
 	*/
 	if (limit > 0xfffff) 
 	{

@@ -1,48 +1,29 @@
 #include <stdio.h>
-#include <string.h>
 #define ui unsigned int
+typedef struct obj {
+	int a, b, c;
+} obj;
 
-struct cc{
-	int x;
-	int y[3];
-};
-
-struct cc ct;
-
-struct cc* func() {
-	ct.x = 111;
-	return &ct;
-}
-
-
-void test (char* s) {
-	printf("slen = %d\n", strlen(s));
-}
-
-void testswitch(int data) {
-	switch (data)
-	{
-		case 1:
-			printf("1\n");
-		case 2:
-			printf("2\n");
-		default:
-			printf("default");
-	}
-}
 
 int main() {
+	obj x;
+	obj* ax = &x;
+	printf("&x = %llx\n", &x);
+	printf("&ax = %x\n", &ax);
+	printf("x_size = %d\n", sizeof(x));
+	printf("ax_size = %d\n", sizeof(ax));
 	
-	struct cc* cp;
-	cp = func();
-	printf("%d\n", cp->x);
-	printf("pointer = %d\n", sizeof(cp));
-	printf("struct = %d\n", sizeof(*cp));
-	unsigned char ttt;
-	printf("unsigned int size = %d\n", sizeof(ttt));
+	ui begin = (ui)&x;
+	ui size = (ui)sizeof(x);
+	ui end = (ui)(&ax) - 1;
+
+	printf("%u - %u = %u\n", begin, size, end);
 	
-	char* st = "123456789";
-	test("123456");
-	testswitch(1);
+	printf("x.a = %x\n", &x.a);
+	printf("x.b = %x\n", &x.b);
+	printf("x.c = %x\n", &x.c);
+	
+	printf("begin = %x\n", &begin);
+
 	return 0;
 }
