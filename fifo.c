@@ -46,9 +46,10 @@ int fifo8_status(struct FIFO8* fifo) {
 }
 
 
-void fifo32_init(struct FIFO32* fifo, int size, int* buf) {
+void fifo32_init(struct FIFO32* fifo, int size, int* buf, struct Task* task) {
     /*
      * 初始化fifo缓冲区
+     * task为要唤醒的任务，可设置为NULL
      */
     fifo->size = size;
     fifo->buf = buf;
@@ -56,6 +57,7 @@ void fifo32_init(struct FIFO32* fifo, int size, int* buf) {
     fifo->flags = 0;
     fifo->w = 0;
     fifo->r = 0;
+    fifo->task = task;
     return;
 }
 
@@ -72,6 +74,7 @@ int fifo32_put(struct FIFO32* fifo, int data) {
     fifo->buf[fifo->w] = data;
     if (++fifo->w == fifo->size) fifo->w = 0;
     --fifo->free;
+    if (fifo->task != NULL && fifo->task->flags != 2) task_run(fifo->task, -1, 0);
     return 0;
 }
 

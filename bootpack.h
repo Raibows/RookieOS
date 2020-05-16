@@ -12,6 +12,9 @@ struct SheetControl;
 struct Timer;
 struct TimerControl;
 struct TSS32;
+struct Task;
+struct TaskControl;
+struct TaskLevel;
 
 
 #define NULL ((void *)0)
@@ -44,8 +47,6 @@ void asm_int_handler20(void);
 int load_cr0(void);
 void store_cr0(int cr0);
 void load_tr(int tr);
-void task_switch4(void);
-void task_switch3(void);
 void far_jmp(int eip, int cs);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 
@@ -106,19 +107,6 @@ struct GATE_DESCRIPTOR {
 	short offset_high;
 };
 
-struct TSS32 {
-    /*
-     * task status segment
-     * 第一行表示的信息是这些寄存器的状态（会不会被写入啊等等）
-     * 第二行存储这些32位寄存器的信息
-     * 第三行为16位寄存器
-     *
-     */
-    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
-    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
-    int es, cs, ss, ds, fs, gs;
-    int ldtr, iomap;
-};
 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd, unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
@@ -143,12 +131,13 @@ struct FIFO8 {
 struct FIFO32 {
     int* buf;
     int w, r, size, free, flags;
+    struct Task* task;
 };
 void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
 int fifo8_put(struct FIFO8* fifo, unsigned char data);
 int fifo8_get(struct FIFO8* fifo);
 int fifo8_status(struct FIFO8* fifo);
-void fifo32_init(struct FIFO32* fifo, int size, int* buf);
+void fifo32_init(struct FIFO32* fifo, int size, int* buf, struct Task* task);
 int fifo32_put(struct FIFO32* fifo, int data);
 int fifo32_get(struct FIFO32* fifo);
 int fifo32_status(struct FIFO32* fifo);
@@ -302,11 +291,68 @@ void timer_settime(struct Timer* timer, unsigned int timeout);
 
 
 /* multitask.c */
-void mt_task_switch(void);
-void mt_init(void);
+
+#define MAX_TASKS 1000 // 最大任务数量
+#define MAX_LEVEL_TASKS 100 // 单个level的最大任务数量
+#define MAX_LEVELS 10 // task level num
+#define TASK_START_GDT 3 // 定义从GDT的几号开始分配给TSS
 
 
+struct TSS32 {
+    /*
+     * task status segment
+     * 第一行表示的信息是这些寄存器的状态（会不会被写入啊等等）
+     * 第二行存储这些32位寄存器的信息
+     * 第三行为16位寄存器
+     *
+     */
+    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
+    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+    int es, cs, ss, ds, fs, gs;
+    int ldtr, iomap;
+};
 
+struct Task {
+    /*
+     * gdt_id记录任务的GDT编号
+     * priority为优先级倍数，基础为1 * 0.01
+     */
+    int gdt_id, priority, level;
+    unsigned char flags;
+    struct TSS32 tss;
+};
+
+struct TaskLevel {
+    /*
+     * running_num记录正在运行的任务数量
+     * now_task记录当前运行的任务
+     */
+    int running_num;
+    int now_task;
+    struct Task* tasks[MAX_LEVEL_TASKS];
+};
+
+
+struct TaskControl {
+    /*
+     * now_lv：正在运行的task_level
+     * is_lv_change：是否需要切换下一个level
+     */
+    int now_lv;
+    char is_lv_change;
+    struct TaskLevel level[MAX_LEVELS];
+    struct Task pool[MAX_TASKS];
+};
+
+struct Task* task_init(struct MemMan* memman);
+struct Task* task_alloc(void);
+void task_run(struct Task* task, int level, int priority);
+void task_switch(void);
+void task_sleep(struct Task* task);
+struct Task* task_now(void);
+void task_add(struct Task* task);
+void task_remove(struct Task* task);
+void task_switch_level(void);
 
 
 

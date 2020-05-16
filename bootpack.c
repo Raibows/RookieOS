@@ -3,6 +3,10 @@
 #include "bootpack.h"
 
 
+int XSIZE;
+int YSIZE;
+
+
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title) {
     static char closebtn[14][16] = {
             "OOOOOOOOOOOOOOO@",
@@ -53,7 +57,6 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title) {
     return;
 }
 
-
 void make_textbox8(struct Sheet* sht, int x0, int y0, int sx, int sy, int c, char* title) {
     int x1 = x0 + sx, y1 = y0 + sy;
     boxfill8(sht->buf, sht->bxsize, COL8_848484, x0 - 2, y0 - 3, x1 + 1, y0 - 3);
@@ -69,16 +72,15 @@ void make_textbox8(struct Sheet* sht, int x0, int y0, int sx, int sy, int c, cha
     return;
 }
 
-void task_b_main(struct Sheet* sht_back) {
+void task_b_main(struct Sheet* sht_win_b) {
     char s[40];
     unsigned int cnt = 0;
-    
     while (1)
     {
         ++cnt;
         io_cli();
         sprintf(s, "%010d", cnt);
-        putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_000000, s);
+        putfonts8_asc_sht(sht_win_b, 0, 16, COL8_FFFFFF, COL8_000000, s);
         io_sti();
     }
     
@@ -94,19 +96,20 @@ void HariMain (void) {
     struct MOUSE_DEC mdec;
     struct MemMan* man = (struct MemMan*) MEMMAN_ADDR;
     struct SheetControl* shtctl;
-    struct Sheet *sht_back, *sht_mouse, *sht_win, *sht_text;
-    unsigned char *buf_back, *buf_win, *buf_mouse;
+    struct Sheet *sht_back, *sht_mouse, *sht_text, *sht_win_b[4];
+    unsigned char *buf_back, *buf_mouse, *buf_win_b;
     struct FIFO32 fifo;
     int fifo_buf[256];
-    struct Timer *timer, *timer2, *timer3;
+    struct Timer *timer;
+    struct Task* task_a;
     
-    int XSIZE = binfo->scrn_x;
-    int YSIZE = binfo->scrn_y;
+    XSIZE = binfo->scrn_x;
+    YSIZE = binfo->scrn_y;
     
     init_gdt_idt();
     init_pic();
     io_sti();
-    fifo32_init(&fifo, 256, fifo_buf);
+    fifo32_init(&fifo, 256, fifo_buf, NULL);
     init_pit();
     io_out8(PIC0_IMR, 0xf8); /* 开放PIC1和键盘中断和PIT，timer中断(11111000) */
     io_out8(PIC1_IMR, 0xef); /* 开放鼠标中断(11101111) */
@@ -119,35 +122,60 @@ void HariMain (void) {
     
     init_palette();/* 设定调色板 */
     shtctl = sheetcontroll_init(man, binfo->vram, XSIZE, YSIZE);
+    
+    task_a = task_init(man);
+    fifo.task = task_a;
+    task_run(task_a, 1, 0);
+    
     sht_back = sheet_alloc(shtctl);
     sht_mouse = sheet_alloc(shtctl);
-    sht_win = sheet_alloc(shtctl);
     sht_text = sheet_alloc(shtctl);
     
     buf_back = (unsigned char*) memman_alloc_4kB(man, XSIZE * YSIZE);
     buf_mouse = (unsigned char*) memman_alloc_4kB(man, 16 * 16);
-    buf_win = (unsigned char*) memman_alloc_4kB(man, 160 * 68);
     
     sheet_setbuf(sht_back, buf_back, XSIZE, YSIZE, -1); //背景background没有透明色
     sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); //透明色号99
-    sheet_setbuf(sht_win, buf_win, 160, 68, -1);
     
     init_screen(buf_back, XSIZE, YSIZE);
     init_mouse_cursor8(buf_mouse, 99);
-    make_window8(buf_win, 160, 68, "Counter");
-//    make_textbox8(sht_text, 8, 28, 144, 16, COL8_FFFFFF, "window");
     make_window(man, sht_text, 160, -1, COL8_C6C6C6, -1, "test");
+    
+    struct Task *task_b[4];
+    
+    int i;
+    for (i = 0; i < 4; ++i)
+    {
+        sht_win_b[i] = sheet_alloc(shtctl);
+        sprintf(s, "task_b %d", i);
+        make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s);
+        task_b[i] = task_alloc();
+        task_b[i]->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
+        task_b[i]->tss.eip = (int) &task_b_main;
+        task_b[i]->tss.es = 1 * 8;
+        task_b[i]->tss.cs = 2 * 8;
+        task_b[i]->tss.ss = 1 * 8;
+        task_b[i]->tss.ds = 1 * 8;
+        task_b[i]->tss.fs = 1 * 8;
+        task_b[i]->tss.gs = 1 * 8;
+        *((int *) (task_b[i]->tss.esp + 4)) = (int) sht_win_b[i];
+        task_run(task_b[i], 2, i + 1);
+    }
+    
     
     int mx = 99, my = 99;
     
     sheet_slide(sht_back, 0, 0);
     sheet_slide(sht_mouse, mx, my);
-    sheet_slide(sht_win, 99, 99);
     sheet_slide(sht_text, mx, my);
+    sheet_slide(sht_win_b[0], 50, 150);
+    sheet_slide(sht_win_b[1], 220, 150);
+    sheet_slide(sht_win_b[2], 50, 200);
+    sheet_slide(sht_win_b[3], 220, 200);
     sheet_updown(sht_back, 0);
-    sheet_updown(sht_mouse, 2);
-    sheet_updown(sht_win, -1);
-    sheet_updown(sht_text, 1);
+    for (i = 0; i < 4; ++i) sheet_updown(sht_win_b[i], i + 1);
+    sheet_updown(sht_text, 5);
+    sheet_updown(sht_mouse, 6);
     
     sprintf(s, "total: %u MB  free: %u KB block: %d",
             total_mem / 1024 / 1024, memman_total(man) / 1024, man->frees);
@@ -155,14 +183,8 @@ void HariMain (void) {
 
     
     timer = timer_alloc();
-    timer2 = timer_alloc();
-    timer3 = timer_alloc();
-    timer_init(timer, &fifo, 10);
-    timer_init(timer2, &fifo, 3);
-    timer_init(timer3, &fifo, 1);
-    timer_settime(timer, 10 * TIMER_COUNT_PER_SECOND);
-    timer_settime(timer2, 3 * TIMER_COUNT_PER_SECOND);
-    timer_settime(timer3, 0.35 * TIMER_COUNT_PER_SECOND);
+    timer_init(timer, &fifo, 1);
+    timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
     
     
     int data;
@@ -179,38 +201,6 @@ void HariMain (void) {
     };
     
     
-    struct TSS32 tss_a, tss_b;
-    int task_b_esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024; //加64*1024是为了计算出栈底的地址（高地址）
-    task_b_esp -= 8;
-    tss_a.ldtr = 0;
-    tss_a.iomap = 0x40000000;
-    tss_b.ldtr = 0;
-    tss_b.iomap = 0x40000000;
-    tss_b.eip = (int) &task_b_main;
-    tss_b.eflags = 0x00000202; /* IF = 1; */
-    tss_b.eax = 0;
-    tss_b.ecx = 0;
-    tss_b.edx = 0;
-    tss_b.ebx = 0;
-    tss_b.esp = task_b_esp;
-    tss_b.ebp = 0;
-    tss_b.esi = 0;
-    tss_b.edi = 0;
-    tss_b.es = 1 * 8;
-    tss_b.cs = 2 * 8;
-    tss_b.ss = 1 * 8;
-    tss_b.ds = 1 * 8;
-    tss_b.fs = 1 * 8;
-    tss_b.gs = 1 * 8;
-    struct SEGMENT_DESCRIPTOR* gdt = (struct SEGMENT_DESCRIPTOR*) ADR_GDT;
-    set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32);
-    set_segmdesc(gdt + 4, 103, (int) &tss_b, AR_TSS32);
-    
-    
-    *((int*)(task_b_esp + 4)) = (int) sht_back;
-    mt_init();
-    
-    load_tr(3 * 8); //向task register标记当前任务是哪个段位置
     
     
     while (1)
@@ -218,6 +208,7 @@ void HariMain (void) {
         io_cli(); //clear interrupt flags
         if (fifo32_status(&fifo) == 0)
         {
+            task_sleep(fifo.task);
             io_stihlt();
         }
         else
@@ -277,25 +268,19 @@ void HariMain (void) {
             {
                 switch (data)
                 {
-                    case 10:
-                        putfonts8_asc_sht(sht_back, 0, 48, COL8_FFFFFF, COL8_000000, "ten seconds!");
-                        break;
-                    case 3:
-                        putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_000000, "3 seconds!");
-                        break;
                     case 1:
-                        timer_init(timer3, &fifo, 0);
+                        timer_init(timer, &fifo, 0);
                         boxfill8(sht_text->buf, sht_text->bxsize, cursor_c, cursor_x, 16, cursor_x + 7, 31);
                         sheet_refresh(sht_text, cursor_x, 16, cursor_x + 8, 32);
                         cursor_c = COL8_C6C6C6;
-                        timer_settime(timer3, 0.35 * TIMER_COUNT_PER_SECOND);
+                        timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
                         break;
                     case 0:
-                        timer_init(timer3, &fifo, 1);
+                        timer_init(timer, &fifo, 1);
                         boxfill8(sht_text->buf, sht_text->bxsize, cursor_c, cursor_x, 16, cursor_x + 7, 31);
                         sheet_refresh(sht_text, cursor_x, 16, cursor_x + 8, 32);
                         cursor_c = COL8_FFFFFF;
-                        timer_settime(timer3, 0.35 * TIMER_COUNT_PER_SECOND);
+                        timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
                         break;
                 }
                 

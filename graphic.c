@@ -1,5 +1,9 @@
 #include "bootpack.h"
 
+extern int XSIZE;
+extern int YSIZE;
+
+
 void init_palette(void) {
     static unsigned char table_rgb[16 * 3] = {
         0x00, 0x00, 0x00,    /*  0:黑 */
@@ -181,8 +185,8 @@ void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s) 
 }
 
 void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title) {
-    xsize = check_pos(xsize, 80, 300);
-    ysize = check_pos(ysize, 32, 200);
+    xsize = check_pos(xsize, 80, XSIZE);
+    ysize = check_pos(ysize, 32, YSIZE);
     unsigned char* buf = (unsigned char*) memman_alloc_4kB(man, xsize * ysize);
     sheet_setbuf(sht, buf, xsize, ysize, col_inv);
     boxfill8(sht->buf, sht->bxsize, COL8_000000, 0, 0, xsize - 1, 15);
