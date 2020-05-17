@@ -61,7 +61,8 @@ void putfonts8_asc(char* vram, int XSIZE, int x, int y, char color, unsigned cha
 void init_mouse_cursor8(char* mouse, char bc);
 void putblock8_8(char* vram, int XSIZE, int pxsize, int pysize, int px0, int py0, char* buf, int bxsize);
 void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s);
-void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title);
+void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title, char is_act);
+void make_title(struct Sheet* sht, char* title, char is_act, char is_close_btn);
 
 #define COL8_000000 0   //黑 
 #define COL8_FF0000 1   //梁红 
@@ -124,19 +125,26 @@ void init_gdt_idt(void);
 
 
 /*fifo.c*/
-struct FIFO8 {
-    unsigned char* buf;
-    int w, r, size, free, flags;
-};
+//struct FIFO8 {
+//    unsigned char* buf;
+//    int w, r, size, free, flags;
+//};
 struct FIFO32 {
+    /*
+     * buf用作缓冲区数组
+     * w为下一个写入
+     * r为下一个读（循环读写）
+     * size - 写入尚未读取的数据 = free
+     * task用来唤醒任务，当向fifo写数据时，自动唤醒关联task，可设置为NULL
+     */
     int* buf;
     int w, r, size, free, flags;
     struct Task* task;
 };
-void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
-int fifo8_put(struct FIFO8* fifo, unsigned char data);
-int fifo8_get(struct FIFO8* fifo);
-int fifo8_status(struct FIFO8* fifo);
+//void fifo8_init(struct FIFO8* fifo, int size, unsigned char* buf);
+//int fifo8_put(struct FIFO8* fifo, unsigned char data);
+//int fifo8_get(struct FIFO8* fifo);
+//int fifo8_status(struct FIFO8* fifo);
 void fifo32_init(struct FIFO32* fifo, int size, int* buf, struct Task* task);
 int fifo32_put(struct FIFO32* fifo, int data);
 int fifo32_get(struct FIFO32* fifo);
@@ -320,6 +328,7 @@ struct Task {
     int gdt_id, priority, level;
     unsigned char flags;
     struct TSS32 tss;
+    struct FIFO32 fifo;
 };
 
 struct TaskLevel {
@@ -353,6 +362,7 @@ struct Task* task_now(void);
 void task_add(struct Task* task);
 void task_remove(struct Task* task);
 void task_switch_level(void);
+void task_idle(void);
 
 
 

@@ -28,7 +28,7 @@ DEL      = rm
 # 默认动作
 
 default :
-	# $(MAKE) clean
+	$(MAKE) clean
 	$(MAKE) run
 	# $(MAKE) clean
 

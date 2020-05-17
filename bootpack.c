@@ -7,6 +7,7 @@ int XSIZE;
 int YSIZE;
 
 
+
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title) {
     static char closebtn[14][16] = {
             "OOOOOOOOOOOOOOO@",
@@ -86,6 +87,66 @@ void task_b_main(struct Sheet* sht_win_b) {
     
 }
 
+void console_task(struct Sheet* sht) {
+    struct Timer* timer;
+    struct Task* task = task_now();
+    int fifobuf[128], data, cursor_x = 0, cursor_c = COL8_FFFFFF;
+    unsigned char s[40];
+    fifo32_init(&task->fifo, 128, fifobuf, task);
+    
+    timer = timer_alloc();
+    timer_init(timer, &task->fifo, 1);
+    timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
+    
+    while (1)
+    {
+        io_cli();
+        if (fifo32_status(&task->fifo) == 0)
+        {
+            task_sleep(task);
+            io_sti();
+        }
+        else
+        {
+            data = fifo32_get(&task->fifo);
+            io_sti();
+            if (data >= 256 && data < 512) // keyboard
+            {
+                data -= 256;
+                if (data == 8) // backspace
+                {
+                    boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, cursor_x, 16, cursor_x + 7, 31); //将当前光标隐藏
+                    sheet_refresh(sht, cursor_x, 16, cursor_x + 8, 32);
+                    cursor_x -= 8;
+                }
+                else
+                {
+                    s[0] = data;
+                    s[1] = '\0';
+                    putfonts8_asc_sht(sht, cursor_x, 16, COL8_000000, COL8_C6C6C6, s);
+                    cursor_x += 8;
+                }
+                cursor_x = check_pos(cursor_x, 0, sht->bxsize - 8);
+            }
+            else // timer
+            {
+                switch (data)
+                {
+                    case 1:timer_init(timer, &task->fifo, 0);
+                        cursor_c = COL8_FFFFFF;
+                        break;
+                    case 0:timer_init(timer, &task->fifo, 1);
+                        cursor_c = COL8_C6C6C6;
+                        break;
+                }
+                boxfill8(sht->buf, sht->bxsize, cursor_c, cursor_x, 16, cursor_x + 7, 16 + 15);
+                sheet_refresh(sht, cursor_x, 16, cursor_x + 8, 16 + 16);
+                timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
+            }
+        }
+    }
+}
+
 
 extern struct TimerControl timerctl;
 
@@ -96,7 +157,7 @@ void HariMain (void) {
     struct MOUSE_DEC mdec;
     struct MemMan* man = (struct MemMan*) MEMMAN_ADDR;
     struct SheetControl* shtctl;
-    struct Sheet *sht_back, *sht_mouse, *sht_text, *sht_win_b[4];
+    struct Sheet *sht_back, *sht_mouse, *sht_text, *sht_win_b[4], *sht_console;
     unsigned char *buf_back, *buf_mouse, *buf_win_b;
     struct FIFO32 fifo;
     int fifo_buf[256];
@@ -130,6 +191,7 @@ void HariMain (void) {
     sht_back = sheet_alloc(shtctl);
     sht_mouse = sheet_alloc(shtctl);
     sht_text = sheet_alloc(shtctl);
+    sht_console = sheet_alloc(shtctl);
     
     buf_back = (unsigned char*) memman_alloc_4kB(man, XSIZE * YSIZE);
     buf_mouse = (unsigned char*) memman_alloc_4kB(man, 16 * 16);
@@ -139,7 +201,21 @@ void HariMain (void) {
     
     init_screen(buf_back, XSIZE, YSIZE);
     init_mouse_cursor8(buf_mouse, 99);
-    make_window(man, sht_text, 160, -1, COL8_C6C6C6, -1, "test");
+    make_window(man, sht_text, 160, -1, COL8_C6C6C6, -1, "test", 1);
+    make_window(man, sht_console, 260, 100, COL8_C6C6C6, -1, "console", 0);
+    
+    struct Task* task_console = task_alloc();
+    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
+    task_console->tss.eip = (int) &console_task;
+    task_console->tss.es = 1 * 8;
+    task_console->tss.cs = 2 * 8;
+    task_console->tss.ss = 1 * 8;
+    task_console->tss.ds = 1 * 8;
+    task_console->tss.fs = 1 * 8;
+    task_console->tss.gs = 1 * 8;
+    *((int *) (task_console->tss.esp + 4)) = (int) sht_console;
+    task_run(task_console, 2, 2); // level=2, priority=2
+    
     
     struct Task *task_b[4];
     
@@ -148,7 +224,7 @@ void HariMain (void) {
     {
         sht_win_b[i] = sheet_alloc(shtctl);
         sprintf(s, "task_b %d", i);
-        make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s);
+        make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s, 0);
         task_b[i] = task_alloc();
         task_b[i]->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
         task_b[i]->tss.eip = (int) &task_b_main;
@@ -172,10 +248,12 @@ void HariMain (void) {
     sheet_slide(sht_win_b[1], 220, 150);
     sheet_slide(sht_win_b[2], 50, 200);
     sheet_slide(sht_win_b[3], 220, 200);
+    sheet_slide(sht_console, 220, 250);
     sheet_updown(sht_back, 0);
     for (i = 0; i < 4; ++i) sheet_updown(sht_win_b[i], i + 1);
     sheet_updown(sht_text, 5);
-    sheet_updown(sht_mouse, 6);
+    sheet_updown(sht_console, 6);
+    sheet_updown(sht_mouse, 7);
     
     sprintf(s, "total: %u MB  free: %u KB block: %d",
             total_mem / 1024 / 1024, memman_total(man) / 1024, man->frees);
@@ -191,17 +269,29 @@ void HariMain (void) {
     int cursor_x, cursor_c;
     cursor_x = 0;
     cursor_c = COL8_FFFFFF;
-    static char keytable[0x54] = {
-            0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', '\b', 0, //15
-            'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@', '[', 0, 0, 'A', 'S', //31
-            'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', ':', 0, 0, ']', 'Z', 'X', 'C', 'V', //47
-            'B', 'N', 'M', ',', '.', '/', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0, //63
-            0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', 75, '5', 77, '+', '1', //79
-            '2', '3', '0', '.' //83
-    };
+    static char keytable0[0x80] = {
+            0,   0,   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', 0,   0,
+            'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@', '[', 0,   0,   'A', 'S',
+            'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', ':', 0,   0,   ']', 'Z', 'X', 'C', 'V',
+            'B', 'N', 'M', ',', '.', '/', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
+            0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
+            '2', '3', '0', '.', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+            0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+            0,   0,   0,   0x5c, 0,  0,   0,   0,   0,   0,   0,   0,   0,   0x5c, 0,  0
+    }; // not pressing SHIFT
+    static char keytable1[0x80] = {
+            0,   0,   '!', 0x22, '#', '$', '%', '&', 0x27, '(', ')', '~', '=', '~', 0,   0,
+            'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '`', '{', 0,   0,   'A', 'S',
+            'D', 'F', 'G', 'H', 'J', 'K', 'L', '+', '*', 0,   0,   '}', 'Z', 'X', 'C', 'V',
+            'B', 'N', 'M', '<', '>', '?', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
+            0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
+            '2', '3', '0', '.', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+            0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+            0,   0,   0,   '_', 0,   0,   0,   0,   0,   0,   0,   0,   0,   '|', 0,   0
+    }; // pressing SHIFT
     
     
-    
+    int tab_to = 0, key_shift = 0, key_leds = (binfo->leds >> 4) & 7;
     
     while (1)
     {
@@ -221,27 +311,81 @@ void HariMain (void) {
                 data -= 256;
                 sprintf(s, "%03d", data);
                 putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_000000, s);
-                if (data > 0x53 || keytable[data] == 0) continue;
-                s[0] = keytable[data];
-                s[1] = '\0';
-                boxfill8(sht_text->buf, sht_text->bxsize, COL8_C6C6C6, cursor_x, 16, cursor_x + 7, 31); //将当前光标隐藏
-                sheet_refresh(sht_text, cursor_x, 16, cursor_x + 8, 32);
-                if (data == 77)
+                if (data < 0x80) // default characters
                 {
-                    cursor_x += 8;
+                    if (key_shift == 0) s[0] = keytable0[data];
+                    else s[0] = keytable1[data];
+                    if (s[0] != 0)
+                    {
+                        if (s[0] >= 'A' && s[0] <= 'Z')
+                        {
+                            if (((key_leds & 4) == 0 && key_shift == 0) ||
+                                ((key_leds & 4) != 0 && key_shift != 0))
+                            {
+                                s[0] += 0x20; // 将大写字母转换为小写字母
+                            }
+                        }
+                        s[1] = '\0';
+                        if (tab_to == 0) // task_a
+                        {
+                            putfonts8_asc_sht(sht_text, cursor_x, 16, COL8_000000, COL8_C6C6C6, s);
+                            cursor_x += 8;
+                        }
+                        else fifo32_put(&task_console->fifo, s[0] + 256);
+                    }
                 }
-                else if (data == 75)
+                if (data == 0x0e) //backspace, 在ASCII码中为8
                 {
-                    cursor_x -= 8;
+                    if (tab_to == 0)
+                    {
+                        boxfill8(sht_text->buf, sht_text->bxsize, COL8_C6C6C6, cursor_x, 16, cursor_x + 7, 31); //将当前光标隐藏
+                        sheet_refresh(sht_text, cursor_x, 16, cursor_x + 8, 32);
+                        cursor_x -= 8;
+                    }
+                    else fifo32_put(&task_console->fifo, 8 + 256);
                 }
-                else if (data == 0x0e) //backspace
+                else if (data == 0x0f) // tab
                 {
-                    cursor_x -= 8;
+                    if (tab_to == 0)
+                    {
+                        tab_to = 1;
+                        make_title(sht_console, "Console", 1, 1);
+                        make_title(sht_text, "test", 0, 1);
+                    }
+                    else if (tab_to == 1)
+                    {
+                        tab_to = 0;
+                        make_title(sht_console, "Console", 0, 1);
+                        make_title(sht_text, "test", 1, 1);
+                    }
                 }
-                else
+                else if (data == 0x2a) // left shift on
                 {
-                    putfonts8_asc_sht(sht_text, cursor_x, 16, COL8_000000, COL8_C6C6C6, s);
-                    cursor_x += 8;
+                    key_shift |= 1;
+                }
+                else if (data == 0x36) // right shift on
+                {
+                    key_shift |= 2;
+                }
+                else if (data == 0xaa) // left shift off
+                {
+                    key_shift &= ~1;
+                }
+                else if (data == 0xb6)
+                {
+                    key_shift &= ~2;
+                }
+                else if (data == 0x3a)
+                { /* CapsLock */
+                    key_leds ^= 4;
+                }
+                else if (data == 0x45)
+                { /* NumLock */
+                    key_leds ^= 2;
+                }
+                else if (data == 0x46)
+                { /* ScrollLock */
+                    key_leds ^= 1;
                 }
                 cursor_x = check_pos(cursor_x, 0, 152);
             }
@@ -287,17 +431,7 @@ void HariMain (void) {
             }
         }
     }
-
-
-
-
-    while (1)
-    {
-        io_hlt();
-    }
 }
-
-
 
 
 

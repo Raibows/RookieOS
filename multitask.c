@@ -5,8 +5,9 @@ struct Timer* task_timer;
 
 struct Task* task_init(struct MemMan* memman) {
     struct Task* task;
+    struct Task* idle;
     struct SEGMENT_DESCRIPTOR* gdt = (struct SEGMENT_DESCRIPTOR*) ADR_GDT;
-    taskctl = (struct TaskControl*)memman_alloc_4kB(memman, sizeof(struct TaskControl));
+    taskctl = (struct TaskControl*) memman_alloc_4kB(memman, sizeof(struct TaskControl));
     int i;
     for (i = 0; i < MAX_TASKS; ++i)
     {
@@ -19,6 +20,7 @@ struct Task* task_init(struct MemMan* memman) {
         taskctl->level[i].running_num = 0;
         taskctl->level[i].now_task = 0;
     }
+    
     task = task_alloc();
     task->flags = 2;
     task->priority = 2;
@@ -28,6 +30,18 @@ struct Task* task_init(struct MemMan* memman) {
     load_tr(task->gdt_id);
     task_timer = timer_alloc();
     timer_settime(task_timer, task->priority);
+    
+    idle = task_alloc();
+    idle->tss.esp = memman_alloc_4kB(memman, 64 * 1024) + 64 * 1024;
+    idle->tss.eip = (int) &task_idle;
+    idle->tss.es = 1 * 8;
+    idle->tss.cs = 2 * 8;
+    idle->tss.ss = 1 * 8;
+    idle->tss.ds = 1 * 8;
+    idle->tss.fs = 1 * 8;
+    idle->tss.gs = 1 * 8;
+    task_run(idle, MAX_LEVELS - 1, 1);
+    
     return task;
 }
 
@@ -105,7 +119,8 @@ void task_sleep(struct Task* task) {
 }
 
 struct Task* task_now(void) {
-    return taskctl->level[taskctl->now_lv].tasks[taskctl->level[taskctl->now_lv].now_task];
+    struct TaskLevel* tl = &taskctl->level[taskctl->now_lv];
+    return tl->tasks[tl->now_task];
 }
 
 void task_add(struct Task* task) {
@@ -131,7 +146,7 @@ void task_remove(struct Task* task) {
         if (tl->tasks[i] == task) break;
     }
     tl->running_num -= 1;
-    if (i < tl->running_num) --tl->now_task;
+    if (i < tl->now_task) --tl->now_task;
     if (tl->now_task >= tl->running_num) tl->now_task = 0;
     task->flags = 1; // allocated or sleeping
     for (; i < tl->running_num; ++i) tl->tasks[i] = tl->tasks[i+1];
@@ -149,6 +164,13 @@ void task_switch_level(void) {
     return;
 }
 
+void task_idle(void) {
+    /*
+     * 闲置任务，确保level中没有一个running时不出bug
+     * 作为哨兵
+     */
+    while (1) io_hlt();
+}
 
 
 
