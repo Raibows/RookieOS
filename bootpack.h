@@ -2,7 +2,7 @@ struct BootInfo;
 struct Sheet;
 struct SEGMENT_DESCRIPTOR;
 struct GATE_DESCRIPTOR;
-struct FIFO8;
+//struct FIFO8;
 struct FIFO32;
 struct MOUSE_DEC;
 struct FreeInfo;
@@ -15,18 +15,36 @@ struct TSS32;
 struct Task;
 struct TaskControl;
 struct TaskLevel;
+struct FileInfo;
 
 
 #define NULL ((void *)0)
 
 /*asmhead.asm*/
 struct BootInfo {
+    /*
+     * 0x0ff0-0x0fff
+     */
 	char cyls, leds, vmode, reserve;
 	short scrn_x, scrn_y;
 	char* vram;
 };
 
+struct FileInfo {
+    /*
+     * name为文件名
+     * ext为后缀
+     * type为文件类型
+     * cluster_id为文件开始的簇号
+     */
+    unsigned char name[8], ext[3], type;
+    char reserve[10];
+    unsigned short time, date, cluster_id;
+    unsigned int size;
+};
+
 #define ADR_BOOTINFO 0x00000ff0
+#define ADR_DISKIMG 0X00100000
 
 
 /*naskfunc.asm*/
@@ -51,6 +69,7 @@ void far_jmp(int eip, int cs);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 
 /*graphic.c*/
+#define LINE_GAP 20 // 一行文字占少y轴空间
 int check_pos(int x, int low, int high);
 void init_palette(void);
 void set_palette(int start, int end, unsigned char *rgb);
@@ -194,7 +213,7 @@ int mouse_decode(struct MOUSE_DEC* mdec, unsigned char data);
 
 
 /*memory.c*/
-#define MEMMAN_ADDR 0x003c0000
+#define ADR_MEMMAN 0x003c0000
 #define MEMMAN_FREES 4090
 #define EFLAGS_AC_BIT 0x00040000
 #define CR0_CACHE_DISABLE 0x60000000
@@ -232,10 +251,14 @@ struct Sheet {
      * buf为该图层内容的地址
      * col_inv透明色号
      * height表示图层高度
+     * cursor_x记录光标极限 (默认make_window的情况下）
+     * cursor_y记录光标极限
      */
     unsigned char* buf;
     int bxsize, bysize, vx, vy, col_inv, flags, height;
     struct SheetControl* ctl;
+    int cursor_x_low, cursor_y_low;
+    int cursor_x_high, cursor_y_high;
 };
 
 struct SheetControl {

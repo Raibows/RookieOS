@@ -187,7 +187,8 @@ _asm_int_handler20:
     IRETD
 
 _memtest_sub:  ; unsigned int memtest_sub(unsigned int start, unsigned int end)
-;关于esp栈指针移动可以看http://www.ruanyifeng.com/blog/2018/01/assembly-language-primer.html
+;关于esp栈指针移动可以看http://www.ruanyifeng.com/blog/2018/01/assembly-language-primer.html（有错误）
+;还是建议自己gcc看汇编8，注意调用call时候会先把eip（当前指令寄存器）压栈，esp自然-4，这是一个坑
     PUSH EDI            ; （由于还要使用EBX, ESI, EDI）
     PUSH ESI
     PUSH EBX

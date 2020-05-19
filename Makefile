@@ -70,6 +70,8 @@ haribote.img : ipl10.bin haribote.sys Makefile
 	$(EDIMG)   imgin:./tolset/z_tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \
 		copy from:haribote.sys to:@: \
+		copy from:int.c to:@: \
+		copy from:Makefile to:@: \
 		imgout:haribote.img
 
 # 其他指令
@@ -103,8 +105,8 @@ run :
 	export SDL_VIDEODRIVER=directx
 	export QEMU_AUDIO_DRV=none
 	export QEMU_AUDIO_LOG_TO_MONITOR=0
-	# qemu-system-x86_64 -L . -m 32M -rtc base=localtime -fda haribote.img -vga std
-	$(MAKE) -C $(TOOLPATH)qemu/
+	qemu-system-x86_64 -L . -m 32M -rtc base=localtime -fda haribote.img -vga std
+	# $(MAKE) -C $(TOOLPATH)qemu/
 
 install :
 	$(MAKE) img

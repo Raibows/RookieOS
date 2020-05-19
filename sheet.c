@@ -39,6 +39,10 @@ void sheet_setbuf(struct Sheet* sht, unsigned char* buf, int xsize, int ysize, i
     sht->bxsize = xsize;
     sht->bysize = ysize;
     sht->col_inv = col_inv;
+    sht->cursor_x_low = 0;
+    sht->cursor_x_high = xsize - 8;
+    sht->cursor_y_low = 0;
+    sht->cursor_y_high = ysize - 16;
     return;
 }
 

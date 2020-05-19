@@ -256,6 +256,9 @@ void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, in
     sheet_setbuf(sht, buf, xsize, ysize, col_inv);
     boxfill8(sht->buf, sht->bxsize, color, 0, 16, xsize - 1, ysize - 1);
     make_title(sht, title, is_act, 1);
+    sht->cursor_y_high = (ysize - 16) / LINE_GAP * LINE_GAP;
+    sht->cursor_x_high = xsize / 8 * 8 - 8;
+    sht->cursor_y_low = 16;
     return;
 }
 
