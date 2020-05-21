@@ -104,22 +104,23 @@ void console_printfile(struct Sheet* sht, char* buf, int size, int* cursor_x, in
 void task_count_main(struct Sheet* sht_win_b) {
     char s[40];
     unsigned int cnt = 0;
+    const int center = sht_win_b->bxsize / 2 - 40;
     while (1)
     {
         ++cnt;
         sprintf(s, "%010u", cnt);
-        putfonts8_asc_sht(sht_win_b, sht_win_b->bxsize / 2 - 40, 16, COL8_FFFFFF, COL8_000000, s);
-        //        io_sti();
+        putfonts8_asc_sht(sht_win_b, center, 16, COL8_FFFFFF, COL8_000000, s);
     }
     
 }
 
-void task_count_kill(struct MemMan* man, struct Task* task, struct Sheet* sht) {
-    task_free(task);
-    sheet_free(sht);
-    memman_free_4kB(man, (unsigned int) sht->buf, sht->bxsize * sht->bysize);
-    task = NULL;
-    sht = NULL;
+void task_count_kill(int bid) {
+    task_free(conctl->btasks[bid]);
+    sheet_free(conctl->bshts[bid]);
+    memman_free_4kB(conctl->man, (unsigned int) conctl->bshts[bid]->buf, conctl->bshts[bid]->bxsize * conctl->bshts[bid]->bysize);
+    memman_free_4kB(conctl->man, conctl->btasks[bid]->stack, 64 * 1024);
+    conctl->btasks[bid] = NULL;
+    conctl->bshts[bid] = NULL;
     return;
 }
 
@@ -132,7 +133,8 @@ void task_count_create(int priority) {
     }
     conctl->btasks[i] = task_alloc();
     conctl->bshts[i] = sheet_alloc(conctl->shtctl);
-    conctl->btasks[i]->tss.esp = memman_alloc_4kB(conctl->man, 64 * 1024) + 64 * 1024 - 8;
+    conctl->btasks[i]->stack = memman_alloc_4kB(conctl->man, 64 * 1024);
+    conctl->btasks[i]->tss.esp = conctl->btasks[i]->stack + 64 * 1024 - 8;
     conctl->btasks[i]->tss.eip = (int) &task_count_main;
     conctl->btasks[i]->tss.es = 1 * 8;
     conctl->btasks[i]->tss.cs = 2 * 8;
@@ -145,7 +147,7 @@ void task_count_create(int priority) {
     make_window(conctl->man, conctl->bshts[i], 160, -1, COL8_C6C6C6, -1, s, 0);
     sheet_slide(conctl->bshts[i], 50, 100+50*i);
     sheet_updown(conctl->bshts[i], 1);
-    task_run(conctl->btasks[i], MAX_LEVELS - 1, priority);
+    task_run(conctl->btasks[i], 3, priority);
     return;
 }
 
@@ -165,7 +167,8 @@ void console_init(struct SheetControl* shtctl, struct MemMan* man, struct Sheet*
     *consht = sheet_alloc(shtctl);
     make_window(man, *consht, 280, 220, COL8_C6C6C6, -1, "console", 1);
     *contask = task_alloc();
-    (*contask)->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024;
+    (*contask)->stack = memman_alloc_4kB(man, 64 * 1024);
+    (*contask)->tss.esp = (*contask)->stack + 64 * 1024;
     (*contask)->tss.eip = (int) &console_task;
     (*contask)->tss.es = 1 * 8;
     (*contask)->tss.cs = 2 * 8;
@@ -173,7 +176,7 @@ void console_init(struct SheetControl* shtctl, struct MemMan* man, struct Sheet*
     (*contask)->tss.ds = 1 * 8;
     (*contask)->tss.fs = 1 * 8;
     (*contask)->tss.gs = 1 * 8;
-    task_run(contask[0], 2, 2);
+    task_run(contask[0], 2, 5);
     return;
 }
 
@@ -196,7 +199,7 @@ int judge_command(unsigned char* s) {
     {
         // run priority
         i = tools_str2int(s, 4, -1);
-        if (i >= 1 && i <= 999) return 102;
+        if (i >= 1 && i <= 10) return 102;
     }
     return -1;
 }
@@ -216,6 +219,7 @@ void console_task() {
     
     
     fifo32_init(&task->fifo, 128, fifobuf, task);
+    task->fifo.task = task;
     timer = timer_alloc();
     timer_init(timer, &task->fifo, 1);
     timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
@@ -345,7 +349,7 @@ void console_task() {
                     {
                         int b = tools_str2int(cmdline, 5, -1);
                         if ((b == -1) || (conctl->btasks[b] == NULL)) goto UNKNOWN_COMMAND;
-                        task_count_kill(man, conctl->btasks[b], conctl->bshts[b]);
+                        task_count_kill(b);
                         sprintf(s, "task_b %d has been killed", b);
                         putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, s);
                         console_newline(sht, &cursor_x, &cursor_y);

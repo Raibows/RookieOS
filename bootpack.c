@@ -46,7 +46,7 @@ void HariMain (void) {
     
     task_a = task_init(man);
     fifo.task = task_a;
-    task_run(task_a, 1, 0);
+    task_run(task_a, 1, 5);
     
     sht_back = sheet_alloc(shtctl);
     debug_init(sht_back);
@@ -107,7 +107,7 @@ void HariMain (void) {
     
 //    *((int*) (task_console->tss.esp + 12)) = (int) task_b[0];
 //    *((int*) (task_console->tss.esp + 16)) = (int) sht_win_b[0];
-    task_run(task_console, 2, 2); // level=2, priority=2
+//    task_run(task_console, 2, 2); // level=2, priority=2
     
     int mx = 99, my = 99;
     

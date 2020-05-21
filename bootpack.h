@@ -354,9 +354,11 @@ struct Task {
     /*
      * gdt_id记录任务的GDT编号
      * priority为优先级倍数，基础为1 * 0.01
+     * stack记录段结束地址（低地址），方便回收
      */
     int gdt_id, priority, level;
     unsigned char flags;
+    unsigned int stack;
     struct TSS32 tss;
     struct FIFO32 fifo;
 };

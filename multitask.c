@@ -34,7 +34,8 @@ struct Task* task_init(struct MemMan* memman) {
     timer_settime(task_timer, task->priority);
     
     idle = task_alloc();
-    idle->tss.esp = memman_alloc_4kB(memman, 64 * 1024) + 64 * 1024;
+    idle->stack = memman_alloc_4kB(memman, 64 * 1024);
+    idle->tss.esp = idle->stack + 64 * 1024;
     idle->tss.eip = (int) &task_idle;
     idle->tss.es = 1 * 8;
     idle->tss.cs = 2 * 8;
