@@ -1,5 +1,6 @@
 #include "bootpack.h"
-#include "string.h"
+#include <stdio.h>
+#include <string.h>
 
 struct ConsoleControl* conctl;
 
@@ -116,7 +117,7 @@ void task_count_main(struct Sheet* sht_win_b) {
 void task_count_kill(struct MemMan* man, struct Task* task, struct Sheet* sht) {
     task_free(task);
     sheet_free(sht);
-    memman_free_4kB(man, sht->buf, sht->bxsize * sht->bysize);
+    memman_free_4kB(man, (unsigned int) sht->buf, sht->bxsize * sht->bysize);
     task = NULL;
     sht = NULL;
     return;
@@ -173,10 +174,10 @@ int judge_command(unsigned char* s) {
 }
 
 void console_task() {
-    struct Sheet* sht = *(conctl->consht);
-    struct Task* task = *(conctl->contask);
-    struct Sheet* task_b = *(conctl->btasks);
-    struct Sheet* sht_b = *(conctl->bshts);
+    struct Sheet* sht = (*conctl->consht);
+    struct Task* task = (*conctl->contask);
+    struct Sheet* task_b = (*conctl->btasks);
+    struct Sheet* sht_b = (*conctl->bshts);
     struct Timer* timer;
     struct MemMan* man = conctl->man;
     struct FileInfo* fileinfo = conctl->fileinfo;

@@ -67,9 +67,9 @@ void HariMain (void) {
     
     struct Task* task_console = NULL;
     struct Task *task_b[task_b_num];
-    int i;
-    for (i = 0; i<task_b_num; ++i) task_b[i] = NULL;
-//    console_init(shtctl, man, &sht_console, &task_console, &task_b[0], &sht_win_b[0], task_b_num);
+//    int i;
+//    for (i = 0; i<task_b_num; ++i) task_b[i] = NULL;
+    console_init(shtctl, man, &sht_console, &task_console, &task_b[0], &sht_win_b[0], task_b_num);
     
 //    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 20;
 //    task_console->tss.eip = (int) &console_task;
