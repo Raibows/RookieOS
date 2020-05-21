@@ -67,9 +67,9 @@ void HariMain (void) {
     
     struct Task* task_console = NULL;
     struct Task *task_b[task_b_num];
-//    int i;
-//    for (i = 0; i<task_b_num; ++i) task_b[i] = NULL;
-    console_init(shtctl, man, &sht_console, &task_console, &task_b[0], &sht_win_b[0], task_b_num);
+    int i;
+    for (i = 0; i<task_b_num; ++i) task_b[i] = NULL;
+    console_init(shtctl, man, &sht_console, &task_console, &task_b, &sht_win_b[0], task_b_num);
     
 //    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 20;
 //    task_console->tss.eip = (int) &console_task;
@@ -107,7 +107,7 @@ void HariMain (void) {
     
 //    *((int*) (task_console->tss.esp + 12)) = (int) task_b[0];
 //    *((int*) (task_console->tss.esp + 16)) = (int) sht_win_b[0];
-//    task_run(task_console, 2, 2); // level=2, priority=2
+    task_run(task_console, 2, 2); // level=2, priority=2
     
     int mx = 99, my = 99;
     
@@ -166,7 +166,7 @@ void HariMain (void) {
         if (fifo32_status(&fifo) == 0)
         {
             task_sleep(fifo.task);
-            io_stihlt();
+            io_sti();
         }
         else
         {

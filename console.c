@@ -1,9 +1,10 @@
-#include "bootpack.h"
 #include <stdio.h>
 #include <string.h>
+#include "bootpack.h"
+#include "tools.h"
+
 
 struct ConsoleControl* conctl;
-
 
 void parallel_move(struct Sheet* sht, int m, int c, int x0, int y0, int x1, int y1) {
     /*
@@ -106,9 +107,8 @@ void task_count_main(struct Sheet* sht_win_b) {
     while (1)
     {
         ++cnt;
-//        io_cli();
         sprintf(s, "%010u", cnt);
-        putfonts8_asc_sht(sht_win_b, 0, 16, COL8_FFFFFF, COL8_000000, s);
+        putfonts8_asc_sht(sht_win_b, sht_win_b->bxsize / 2 - 40, 16, COL8_FFFFFF, COL8_000000, s);
         //        io_sti();
     }
     
@@ -123,7 +123,29 @@ void task_count_kill(struct MemMan* man, struct Task* task, struct Sheet* sht) {
     return;
 }
 
-void task_count_create() {
+void task_count_create(int priority) {
+    int i;
+    char s[20];
+    for (i = 0; i < conctl->task_b_num; ++i)
+    {
+        if (conctl->btasks[i] == NULL) break;
+    }
+    conctl->btasks[i] = task_alloc();
+    conctl->bshts[i] = sheet_alloc(conctl->shtctl);
+    conctl->btasks[i]->tss.esp = memman_alloc_4kB(conctl->man, 64 * 1024) + 64 * 1024 - 8;
+    conctl->btasks[i]->tss.eip = (int) &task_count_main;
+    conctl->btasks[i]->tss.es = 1 * 8;
+    conctl->btasks[i]->tss.cs = 2 * 8;
+    conctl->btasks[i]->tss.ss = 1 * 8;
+    conctl->btasks[i]->tss.ds = 1 * 8;
+    conctl->btasks[i]->tss.fs = 1 * 8;
+    conctl->btasks[i]->tss.gs = 1 * 8;
+    *((int *) (conctl->btasks[i]->tss.esp + 4)) = (int) (conctl->bshts[i]);
+    sprintf(s, "task_count %d", i);
+    make_window(conctl->man, conctl->bshts[i], 160, -1, COL8_C6C6C6, -1, s, 0);
+    sheet_slide(conctl->bshts[i], 50, 100+50*i);
+    sheet_updown(conctl->bshts[i], 1);
+    task_run(conctl->btasks[i], MAX_LEVELS - 1, priority);
     return;
 }
 
@@ -151,7 +173,7 @@ void console_init(struct SheetControl* shtctl, struct MemMan* man, struct Sheet*
     (*contask)->tss.ds = 1 * 8;
     (*contask)->tss.fs = 1 * 8;
     (*contask)->tss.gs = 1 * 8;
-    task_run(*contask, 2, 2);
+    task_run(contask[0], 2, 2);
     return;
 }
 
@@ -168,7 +190,13 @@ int judge_command(unsigned char* s) {
     if (strncmp(s, "cat ", 4) == 0) return 100;
     if (strncmp(s, "kill ", 5) == 0)
     {
-        if (s[5] >= '0' && s[5] < '4' && s[6] == '\0') return 101;
+        if (s[5] >= '0' && s[5] <= '9' && s[6] == '\0') return 101;
+    }
+    if (strncmp(s, "run ", 4) == 0)
+    {
+        // run priority
+        i = tools_str2int(s, 4, -1);
+        if (i >= 1 && i <= 999) return 102;
     }
     return -1;
 }
@@ -176,8 +204,6 @@ int judge_command(unsigned char* s) {
 void console_task() {
     struct Sheet* sht = (*conctl->consht);
     struct Task* task = (*conctl->contask);
-    struct Sheet* task_b = (*conctl->btasks);
-    struct Sheet* sht_b = (*conctl->bshts);
     struct Timer* timer;
     struct MemMan* man = conctl->man;
     struct FileInfo* fileinfo = conctl->fileinfo;
@@ -317,14 +343,24 @@ void console_task() {
                     }
                     else if (cmd_judge_flag == 101) // kill
                     {
-                        int b = cmdline[5] - '0';
-                        task_count_kill(man, &task_b[b], &sht_b[b]);
+                        int b = tools_str2int(cmdline, 5, -1);
+                        if ((b == -1) || (conctl->btasks[b] == NULL)) goto UNKNOWN_COMMAND;
+                        task_count_kill(man, conctl->btasks[b], conctl->bshts[b]);
                         sprintf(s, "task_b %d has been killed", b);
                         putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, s);
                         console_newline(sht, &cursor_x, &cursor_y);
                     }
+                    else if (cmd_judge_flag == 102) // run
+                    {
+                        int prio = tools_str2int(cmdline, 4, -1);
+                        sprintf(s, "task_count priority %d running", prio);
+                        putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, s);
+                        task_count_create(prio);
+                        console_newline(sht, &cursor_x, &cursor_y);
+                    }
                     else
                     {
+                        UNKNOWN_COMMAND:
                         putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, "Unknown Command");
                         console_newline(sht, &cursor_x, &cursor_y);
                     }
