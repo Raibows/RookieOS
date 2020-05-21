@@ -11,12 +11,13 @@ extern struct TimerControl timerctl;
 
 
 void HariMain (void) {
+    const int task_b_num = 10;
     unsigned char s[40];
     struct BootInfo* binfo = (struct BootInfo*) 0x0ff0;
     struct MOUSE_DEC mdec;
     struct MemMan* man = (struct MemMan*) ADR_MEMMAN;
     struct SheetControl* shtctl;
-    struct Sheet *sht_back, *sht_mouse, *sht_text, *sht_win_b[4], *sht_console;
+    struct Sheet *sht_back, *sht_mouse, *sht_text, *sht_win_b[task_b_num], *sht_console;
     unsigned char *buf_back, *buf_mouse;
     struct FIFO32 fifo;
     int fifo_buf[256];
@@ -51,7 +52,7 @@ void HariMain (void) {
     debug_init(sht_back);
     sht_mouse = sheet_alloc(shtctl);
     sht_text = sheet_alloc(shtctl);
-    sht_console = sheet_alloc(shtctl);
+//    sht_console = sheet_alloc(shtctl);
     
     buf_back = (unsigned char*) memman_alloc_4kB(man, XSIZE * YSIZE);
     buf_mouse = (unsigned char*) memman_alloc_4kB(man, 16 * 16);
@@ -62,64 +63,67 @@ void HariMain (void) {
     init_screen(buf_back, XSIZE, YSIZE);
     init_mouse_cursor8(buf_mouse, 99);
     make_window(man, sht_text, 160, -1, COL8_C6C6C6, -1, "test", 1);
-    make_window(man, sht_console, 280, 220, COL8_C6C6C6, -1, "console", 1);
+//    make_window(man, sht_console, 280, 220, COL8_C6C6C6, -1, "console", 1);
     
-    struct Task* task_console = task_alloc();
-    struct Task *task_b[4];
-    
-    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 20;
-    task_console->tss.eip = (int) &console_task;
-    task_console->tss.es = 1 * 8;
-    task_console->tss.cs = 2 * 8;
-    task_console->tss.ss = 1 * 8;
-    task_console->tss.ds = 1 * 8;
-    task_console->tss.fs = 1 * 8;
-    task_console->tss.gs = 1 * 8;
-    *((int*) (task_console->tss.esp + 4)) = (int) sht_console;
-    *((int*) (task_console->tss.esp + 8)) = total_mem;
-    
-    
-    
-    
-    
+    struct Task* task_console = NULL;
+    struct Task *task_b[task_b_num];
     int i;
-    for (i = 0; i < 4; ++i)
-    {
-        sht_win_b[i] = sheet_alloc(shtctl);
-        sprintf(s, "task_b %d", i);
-        make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s, 0);
-        task_b[i] = task_alloc();
-        task_b[i]->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
-        task_b[i]->tss.eip = (int) &task_count_main;
-        task_b[i]->tss.es = 1 * 8;
-        task_b[i]->tss.cs = 2 * 8;
-        task_b[i]->tss.ss = 1 * 8;
-        task_b[i]->tss.ds = 1 * 8;
-        task_b[i]->tss.fs = 1 * 8;
-        task_b[i]->tss.gs = 1 * 8;
-        *((int *) (task_b[i]->tss.esp + 4)) = (int) sht_win_b[i];
-        task_run(task_b[i], 2, i + 1);
-    }
+    for (i = 0; i<task_b_num; ++i) task_b[i] = NULL;
+//    console_init(shtctl, man, &sht_console, &task_console, &task_b[0], &sht_win_b[0], task_b_num);
     
-    *((int*) (task_console->tss.esp + 12)) = (int) task_b[0];
-    *((int*) (task_console->tss.esp + 16)) = (int) sht_win_b[0];
-    task_run(task_console, 2, 2); // level=2, priority=2
+//    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 20;
+//    task_console->tss.eip = (int) &console_task;
+//    task_console->tss.es = 1 * 8;
+//    task_console->tss.cs = 2 * 8;
+//    task_console->tss.ss = 1 * 8;
+//    task_console->tss.ds = 1 * 8;
+//    task_console->tss.fs = 1 * 8;
+//    task_console->tss.gs = 1 * 8;
+//    *((int*) (task_console->tss.esp + 4)) = (int) sht_console;
+//    *((int*) (task_console->tss.esp + 8)) = total_mem;
+    
+    
+    
+    
+    
+
+//    for (i = 0; i < 4; ++i)
+//    {
+//        sht_win_b[i] = sheet_alloc(shtctl);
+//        sprintf(s, "task_b %d", i);
+//        make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s, 0);
+//        task_b[i] = task_alloc();
+//        task_b[i]->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
+//        task_b[i]->tss.eip = (int) &task_count_main;
+//        task_b[i]->tss.es = 1 * 8;
+//        task_b[i]->tss.cs = 2 * 8;
+//        task_b[i]->tss.ss = 1 * 8;
+//        task_b[i]->tss.ds = 1 * 8;
+//        task_b[i]->tss.fs = 1 * 8;
+//        task_b[i]->tss.gs = 1 * 8;
+//        *((int *) (task_b[i]->tss.esp + 4)) = (int) sht_win_b[i];
+//        task_run(task_b[i], 2, i + 1);
+//    }
+    
+//    *((int*) (task_console->tss.esp + 12)) = (int) task_b[0];
+//    *((int*) (task_console->tss.esp + 16)) = (int) sht_win_b[0];
+//    task_run(task_console, 2, 2); // level=2, priority=2
     
     int mx = 99, my = 99;
     
     sheet_slide(sht_back, 0, 0);
     sheet_slide(sht_mouse, mx, my);
     sheet_slide(sht_text, mx, my);
-    sheet_slide(sht_win_b[0], 50, 100);
-    sheet_slide(sht_win_b[1], 220, 100);
-    sheet_slide(sht_win_b[2], 50, 150);
-    sheet_slide(sht_win_b[3], 220, 150);
+//    sheet_slide(sht_win_b[0], 50, 100);
+//    sheet_slide(sht_win_b[1], 220, 100);
+//    sheet_slide(sht_win_b[2], 50, 150);
+//    sheet_slide(sht_win_b[3], 220, 150);
     sheet_slide(sht_console, 220, 200);
     sheet_updown(sht_back, 0);
-    for (i = 0; i < 4; ++i) sheet_updown(sht_win_b[i], i + 1);
-    sheet_updown(sht_text, 5);
-    sheet_updown(sht_console, 6);
-    sheet_updown(sht_mouse, 7);
+//    for (i = 0; i < 4; ++i) sheet_updown(sht_win_b[i], i + 1);
+    sheet_updown(sht_text, task_b_num+1);
+    sheet_updown(sht_console, task_b_num+2);
+    sheet_updown(sht_mouse, task_b_num+3);
     
     
     

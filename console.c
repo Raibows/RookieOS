@@ -1,6 +1,7 @@
 #include "bootpack.h"
 #include "string.h"
 
+struct ConsoleControl* conctl;
 
 
 void parallel_move(struct Sheet* sht, int m, int c, int x0, int y0, int x1, int y1) {
@@ -125,6 +126,34 @@ void task_count_create() {
     return;
 }
 
+void console_init(struct SheetControl* shtctl, struct MemMan* man, struct Sheet** consht,
+        struct Task** contask, struct Task** task_b, struct Sheet** sht_b, int task_b_num) {
+    
+    conctl = (struct ConsoleControl*) memman_alloc_4kB(man, sizeof(struct ConsoleControl));
+    conctl->consht = consht;
+    conctl->contask = contask;
+    conctl->shtctl = shtctl;
+    conctl->man = man;
+    conctl->task_b_num = task_b_num;
+    conctl->bshts = sht_b;
+    conctl->btasks = task_b;
+    conctl->fileinfo = (struct FileInfo*) (ADR_DISKIMG + 0x002600);
+    conctl->gdt = (struct SEGMENT_DESCRIPTOR*) ADR_GDT;
+    *consht = sheet_alloc(shtctl);
+    make_window(man, *consht, 280, 220, COL8_C6C6C6, -1, "console", 1);
+    *contask = task_alloc();
+    (*contask)->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024;
+    (*contask)->tss.eip = (int) &console_task;
+    (*contask)->tss.es = 1 * 8;
+    (*contask)->tss.cs = 2 * 8;
+    (*contask)->tss.ss = 1 * 8;
+    (*contask)->tss.ds = 1 * 8;
+    (*contask)->tss.fs = 1 * 8;
+    (*contask)->tss.gs = 1 * 8;
+    task_run(*contask, 2, 2);
+    return;
+}
+
 int judge_command(unsigned char* s) {
     const static int cmd_num = 4;
     static unsigned char cmds[4][10] = {
@@ -143,12 +172,15 @@ int judge_command(unsigned char* s) {
     return -1;
 }
 
-void console_task(struct Sheet* sht, unsigned int total_mem, struct Task* task_b, struct Sheet* sht_b) {
+void console_task() {
+    struct Sheet* sht = *(conctl->consht);
+    struct Task* task = *(conctl->contask);
+    struct Sheet* task_b = *(conctl->btasks);
+    struct Sheet* sht_b = *(conctl->bshts);
     struct Timer* timer;
-    struct Task* task = task_now();
-    struct MemMan* man = (struct MemMan*) ADR_MEMMAN;
-    struct FileInfo* fileinfo = (struct FileInfo*) (ADR_DISKIMG + 0x002600);
-    struct SEGMENT_DESCRIPTOR* gdt = (struct SEGMENT_DESCRIPTOR*) ADR_GDT;
+    struct MemMan* man = conctl->man;
+    struct FileInfo* fileinfo = conctl->fileinfo;
+    struct SEGMENT_DESCRIPTOR* gdt = conctl->gdt;
     int fifobuf[128], data, cursor_x = sht->cursor_x_low, cursor_c = -1, cursor_y = sht->cursor_y_low;
     unsigned char s[40], cmdline[40];
     int cmd_judge_flag = -1;
@@ -164,7 +196,7 @@ void console_task(struct Sheet* sht, unsigned int total_mem, struct Task* task_b
     cursor_x += 16;
     sht->cursor_x_low = 16;
     
-    total_mem /= (1024 * 1024);
+    unsigned int total_mem = memtest(0x00400000, 0xbfffffff) / (1024 * 1024);
     
     while (1)
     {
@@ -278,7 +310,7 @@ void console_task(struct Sheet* sht, unsigned int total_mem, struct Task* task_b
                             file_loadfile(fileinfo[t3].cluster_id, fileinfo[t3].size, buf,
                                     fat, (unsigned char*) (0x003e00 + ADR_DISKIMG));
                             console_printfile(sht, buf, fileinfo[t3].size, &cursor_x, &cursor_y);
-                            memman_free_4kB(man, buf, fileinfo[t3].size);
+                            memman_free_4kB(man, (unsigned int) buf, fileinfo[t3].size);
                         }
                         console_newline(sht, &cursor_x, &cursor_y);
                     }

@@ -408,8 +408,21 @@ void make_title(struct Sheet* sht, char* title, char is_act, char is_close_btn);
 
 
 /* console.c */
-//void console_task(struct Sheet* sht, unsigned int total_mem);
-void console_task(struct Sheet* sht, unsigned int total_mem, struct Task* task_b, struct Sheet* sht_b);
+struct ConsoleControl {
+    struct Task** contask;
+    struct Sheet** consht;
+    struct SheetControl* shtctl;
+    int task_b_num;
+    struct Sheet** bshts;
+    struct Task** btasks;
+    struct MemMan* man;
+    struct FileInfo* fileinfo;
+    struct SEGMENT_DESCRIPTOR* gdt;
+};
+void console_init(struct SheetControl* shtctl, struct MemMan* man, struct Sheet** consht,
+                  struct Task** contask, struct Task** task_b, struct Sheet** sht_b, int task_b_num);
+//void console_task(struct Sheet* sht, unsigned int total_mem, struct Task* task_b, struct Sheet* sht_b);
+void console_task(void);
 void task_count_main(struct Sheet* sht_win_b);
 
 
