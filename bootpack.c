@@ -3,231 +3,7 @@
 #include "bootpack.h"
 
 
-void parallel_move(struct Sheet* sht, int m, int c, int x0, int y0, int x1, int y1) {
-    /*
-     * 注意范围是【x0, x1】，双闭区间
-     * 将矩形范围内的东西平行复制过去
-     * m为正时，向上移动
-     * m为负时，向下移动
-     * 注意并不会影响到矩阵范围外的内容，是在矩阵范围内的移动
-     * 移动后空余的部分将被填充颜色 c
-     */
-    int i, j;
-    if (m > 0)
-    {
-        for (i = y0; i <= y1 - m; ++i)
-        {
-            for (j = x0; j <= x1; ++j)
-            {
-                sht->buf[j + i * sht->bxsize] = sht->buf[j + (i + m) * sht->bxsize];
-            }
-        }
-        for (; i <= y1; ++i)
-        {
-            for (j = x0; j <= x1; ++j) sht->buf[j + i * sht->bxsize] = c;
-        }
-    }
-    else if (m < 0)
-    {
-        for (i = y1; i >= y0 + m; --i)
-        {
-            for (j = x0; j <= x1; ++j)
-            {
-                sht->buf[j + i * sht->bxsize] = sht->buf[j + (i + m) * sht->bxsize];
-            }
-        }
-        for (; i >= y0; --i)
-        {
-            for (j = x0; j <= x1; ++j) sht->buf[j + i * sht->bxsize] = c;
-        }
-    }
-    sheet_refresh(sht, x0, y0, x1 + 1, y1 + 1);
-    return;
-}
 
-void console_newline(struct Sheet* sht, int* cursor_x, int* cursor_y) {
-    if (*cursor_y + LINE_GAP <= sht->cursor_y_high)
-    {
-        *cursor_y += LINE_GAP;
-    }
-    else
-    {
-        parallel_move(sht, LINE_GAP, COL8_C6C6C6, 0, sht->cursor_y_low,
-                sht->cursor_x_high+7, sht->cursor_y_high+LINE_GAP-1);
-    }
-    *cursor_x = sht->cursor_x_low;
-    return;
-}
-
-void task_b_main(struct Sheet* sht_win_b) {
-    char s[40];
-    unsigned int cnt = 0;
-    while (1)
-    {
-        ++cnt;
-//        io_cli();
-        sprintf(s, "%010d", cnt);
-        putfonts8_asc_sht(sht_win_b, 0, 16, COL8_FFFFFF, COL8_000000, s);
-        //        io_sti();
-    }
-    
-}
-
-int judge_command(unsigned char* s) {
-    const static int cmd_num = 3;
-    static unsigned char cmds[3][10] = {
-            {"free"}, {"clear"}, {"ls"},
-    };
-    int i;
-    for (i = 0; i < cmd_num; ++i)
-    {
-        if (strcmp(s, cmds[i]) == 0) return i;
-    }
-    return -1;
-}
-
-void console_task(struct Sheet* sht, unsigned int total_mem) {
-    struct Timer* timer;
-    struct Task* task = task_now();
-    struct MemMan* man = (struct MemMan*) ADR_MEMMAN;
-    struct FileInfo* fileinfo = (struct FileInfo*) (ADR_DISKIMG + 0x002600);
-    int fifobuf[128], data, cursor_x = sht->cursor_x_low, cursor_c = -1, cursor_y = sht->cursor_y_low;
-    unsigned char s[40], cmdline[40];
-    int cmd_judge_flag = -1;
-    fifo32_init(&task->fifo, 128, fifobuf, task);
-    
-    timer = timer_alloc();
-    timer_init(timer, &task->fifo, 1);
-    timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
-    putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, "$ ");
-    cursor_x += 16;
-    sht->cursor_x_low = 16;
-    
-    total_mem /= (1024 * 1024);
-    
-    while (1)
-    {
-        io_cli();
-        if (fifo32_status(&task->fifo) == 0)
-        {
-            task_sleep(task);
-            io_sti();
-        }
-        else
-        {
-            data = fifo32_get(&task->fifo);
-            io_sti();
-            if (data >= 256 && data < 512) // keyboard
-            {
-                data -= 256;
-                if (data == 8) // backspace
-                {
-                    if (cursor_x - 8 >= sht->cursor_x_low)
-                    {
-                        boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, cursor_x, cursor_y, cursor_x + 7, cursor_y + 15); //将当前光标隐藏
-                        sheet_refresh(sht, cursor_x, cursor_y, cursor_x + 8, cursor_y + 16);
-                        cursor_x -= 8;
-                    }
-                }
-                else if (data == 10) // enter
-                {
-                    if (cursor_x == sht->cursor_x_low) continue;
-                    cmdline[(cursor_x - sht->cursor_x_low) / 8] = '\0';
-                    boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, cursor_x, cursor_y, cursor_x + 7, cursor_y + 15); //将当前光标隐藏
-                    sheet_refresh(sht, cursor_x, cursor_y, cursor_x + 8, cursor_y + 16);
-                    console_newline(sht, &cursor_x, &cursor_y);
-                    cmd_judge_flag = judge_command(cmdline);
-                    if (cmd_judge_flag == 0)
-                    {
-                        // free command
-                        sprintf(s, "Total: %dMB, Free: %dKB", total_mem, memman_total(man) / 1024);
-                        putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, s);
-                        console_newline(sht, &cursor_x, &cursor_y);
-                    }
-                    else if (cmd_judge_flag == 1)
-                    {
-                        boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, 0, sht->cursor_y_low,
-                                sht->cursor_x_high+7, sht->cursor_y_high+LINE_GAP-1);
-                        sheet_refresh(sht, 0, sht->cursor_y_low,
-                                      sht->cursor_x_high+8, sht->cursor_y_high+LINE_GAP);
-                        cursor_x = sht->cursor_x_low;
-                        cursor_y = sht->cursor_y_low;
-                    }
-                    else if (cmd_judge_flag == 2)
-                    {
-                        int t;
-                        for (t = 0; t < 224; ++t)
-                        {
-                            if (fileinfo[t].name[0] == 0x00) break; // 已到头
-                            if (fileinfo[t].name[0] != 0xe5) // 0xe5代表被删除
-                            {
-                                if ((fileinfo[t].type & 0x18) == 0)
-                                {
-                                    sprintf(s, "01234567.9AB  %07d B", fileinfo[t].size);
-                                    int t2;
-                                    for (t2 = 0; t2 < 8; ++t2) s[t2] = fileinfo[t].name[t2];
-                                    s[9] = fileinfo[t].ext[0];
-                                    s[10] = fileinfo[t].ext[1];
-                                    s[11] = fileinfo[t].ext[2];
-                                    if (s[9] == ' ') s[8] = ' ';
-                                }
-                                putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, s);
-                                console_newline(sht, &cursor_x, &cursor_y);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, "Unknown Command");
-                        console_newline(sht, &cursor_x, &cursor_y);
-                    }
-                    putfonts8_asc_sht(sht, 0, cursor_y, COL8_000000, COL8_C6C6C6, "$ ");
-                }
-                else
-                {
-                    s[0] = data;
-                    s[1] = '\0';
-                    cmdline[(cursor_x - sht->cursor_x_low) / 8] = data;
-                    putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_000000, COL8_C6C6C6, s);
-                    cursor_x += 8;
-                }
-                cursor_x = check_pos(cursor_x, sht->cursor_x_low, sht->cursor_x_high);
-                cursor_y = check_pos(cursor_y, sht->cursor_y_low, sht->cursor_y_high);
-            }
-            else if (data == 4)
-            {
-                cursor_c = -1;
-                boxfill8(sht->buf, sht->bxsize, COL8_C6C6C6, cursor_x, 16, cursor_x + 7, 16 + 15);
-                sheet_refresh(sht, cursor_x, 16, cursor_x + 8, 16 + 16);
-            }
-            else if (data == 3)
-            {
-                cursor_c = 0;
-            }
-            else // timer
-            {
-                if (cursor_c < 0)
-                {
-                    timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
-                    continue;
-                }
-                switch (data)
-                {
-                    case 1:timer_init(timer, &task->fifo, 0);
-                        cursor_c = COL8_FFFFFF;
-                        break;
-                    case 0:timer_init(timer, &task->fifo, 1);
-                        cursor_c = COL8_C6C6C6;
-                        break;
-                }
-                
-                boxfill8(sht->buf, sht->bxsize, cursor_c, cursor_x, cursor_y, cursor_x + 7, cursor_y + 15);
-                sheet_refresh(sht, cursor_x, cursor_y, cursor_x + 8, cursor_y + 16);
-                timer_settime(timer, 0.35 * TIMER_COUNT_PER_SECOND);
-            }
-        }
-    }
-}
 
 int XSIZE;
 int YSIZE;
@@ -272,6 +48,7 @@ void HariMain (void) {
     task_run(task_a, 1, 0);
     
     sht_back = sheet_alloc(shtctl);
+    debug_init(sht_back);
     sht_mouse = sheet_alloc(shtctl);
     sht_text = sheet_alloc(shtctl);
     sht_console = sheet_alloc(shtctl);
@@ -285,10 +62,12 @@ void HariMain (void) {
     init_screen(buf_back, XSIZE, YSIZE);
     init_mouse_cursor8(buf_mouse, 99);
     make_window(man, sht_text, 160, -1, COL8_C6C6C6, -1, "test", 1);
-    make_window(man, sht_console, 260, 180, COL8_C6C6C6, -1, "console", 0);
+    make_window(man, sht_console, 280, 220, COL8_C6C6C6, -1, "console", 1);
     
     struct Task* task_console = task_alloc();
-    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 12;
+    struct Task *task_b[4];
+    
+    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 20;
     task_console->tss.eip = (int) &console_task;
     task_console->tss.es = 1 * 8;
     task_console->tss.cs = 2 * 8;
@@ -299,10 +78,9 @@ void HariMain (void) {
     *((int*) (task_console->tss.esp + 4)) = (int) sht_console;
     *((int*) (task_console->tss.esp + 8)) = total_mem;
     
-    task_run(task_console, 2, 2); // level=2, priority=2
     
     
-    struct Task *task_b[4];
+    
     
     int i;
     for (i = 0; i < 4; ++i)
@@ -312,7 +90,7 @@ void HariMain (void) {
         make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s, 0);
         task_b[i] = task_alloc();
         task_b[i]->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
-        task_b[i]->tss.eip = (int) &task_b_main;
+        task_b[i]->tss.eip = (int) &task_count_main;
         task_b[i]->tss.es = 1 * 8;
         task_b[i]->tss.cs = 2 * 8;
         task_b[i]->tss.ss = 1 * 8;
@@ -323,6 +101,9 @@ void HariMain (void) {
         task_run(task_b[i], 2, i + 1);
     }
     
+    *((int*) (task_console->tss.esp + 12)) = (int) task_b[0];
+    *((int*) (task_console->tss.esp + 16)) = (int) sht_win_b[0];
+    task_run(task_console, 2, 2); // level=2, priority=2
     
     int mx = 99, my = 99;
     
@@ -498,7 +279,8 @@ void HariMain (void) {
                 sheet_slide(sht_mouse, mx, my);
                 if ((mdec.btn & 0x01) != 0)
                 {
-                    sheet_slide(sht_text, mx, my);
+                    if (tab_to == 0) sheet_slide(sht_text, mx, my);
+                    else if (tab_to == 1) sheet_slide(sht_console, mx, my);
                 }
             }
             else

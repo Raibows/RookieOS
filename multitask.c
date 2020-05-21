@@ -3,6 +3,7 @@
 struct TaskControl* taskctl;
 struct Timer* task_timer;
 
+
 struct Task* task_init(struct MemMan* memman) {
     struct Task* task;
     struct Task* idle;
@@ -11,6 +12,7 @@ struct Task* task_init(struct MemMan* memman) {
     int i;
     for (i = 0; i < MAX_TASKS; ++i)
     {
+        // gdt [3, 1002]
         taskctl->pool[i].flags = 0;
         taskctl->pool[i].gdt_id = (TASK_START_GDT + i) * 8;
         set_segmdesc(gdt + TASK_START_GDT + i, 103, (int) &taskctl->pool[i].tss, AR_TSS32);
@@ -45,27 +47,38 @@ struct Task* task_init(struct MemMan* memman) {
     return task;
 }
 
+void task_ready(struct Task* task) {
+    task->flags = 1; // allocated
+    task->tss.eflags = 0x00000202; // IF = 1允许响应中断
+    task->tss.eax = 0; // 这里先置为0
+    task->tss.ecx = 0;
+    task->tss.edx = 0;
+    task->tss.ebx = 0;
+    task->tss.ebp = 0;
+    task->tss.esi = 0;
+    task->tss.edi = 0;
+    task->tss.es = 0;
+    task->tss.ds = 0;
+    task->tss.fs = 0;
+    task->tss.gs = 0;
+    task->tss.ldtr = 0;
+    task->tss.iomap = 0x40000000;
+    task->fifo.task = NULL;
+    task->fifo.buf = NULL;
+    task->fifo.size = 0;
+    task->fifo.free = 0;
+    task->fifo.r = 0;
+    task->fifo.w = 0;
+    return;
+}
+
 struct Task* task_alloc(void) {
     int i;
     for (i=0; i<MAX_TASKS; ++i)
     {
         if (taskctl->pool[i].flags == 0)
         {
-            taskctl->pool[i].flags = 1; // allocated
-            taskctl->pool[i].tss.eflags = 0x00000202; // IF = 1允许响应中断
-            taskctl->pool[i].tss.eax = 0; // 这里先置为0
-            taskctl->pool[i].tss.ecx = 0;
-            taskctl->pool[i].tss.edx = 0;
-            taskctl->pool[i].tss.ebx = 0;
-            taskctl->pool[i].tss.ebp = 0;
-            taskctl->pool[i].tss.esi = 0;
-            taskctl->pool[i].tss.edi = 0;
-            taskctl->pool[i].tss.es = 0;
-            taskctl->pool[i].tss.ds = 0;
-            taskctl->pool[i].tss.fs = 0;
-            taskctl->pool[i].tss.gs = 0;
-            taskctl->pool[i].tss.ldtr = 0;
-            taskctl->pool[i].tss.iomap = 0x40000000;
+            task_ready(&taskctl->pool[i]);
             return &taskctl->pool[i];
         }
     }
@@ -73,6 +86,8 @@ struct Task* task_alloc(void) {
 }
 
 void task_run(struct Task* task, int level, int priority) {
+    assert(task->flags != 0, "free task tried to run");
+    if (task->flags == 0) return; // 已经free的不能再被运行
     if (level < 0) level = task->level; // 注意level是从0开始的，因此如果不想改变task的等级，需指定负数
     if (priority > 0) task->priority = priority; // if priority == 0, do not change it's priority level
     
@@ -172,7 +187,17 @@ void task_idle(void) {
     while (1) io_hlt();
 }
 
-
+void task_free(struct Task* task) {
+    /*
+     * 释放一个任务，并不保证task中的相关资源被释放
+     * 如fifo等等
+     * 请确保没有额外的fifo绑定了task，否则将会被唤醒（导致出错）
+     */
+    task_remove(task);
+    task_ready(task);
+    task->flags = 0;
+    return;
+}
 
 
 

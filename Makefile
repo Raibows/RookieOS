@@ -2,7 +2,8 @@ TOOLPATH = ./tolset/z_tools/
 INCPATH  = ./tolset/z_tools/haribote/
 OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj \
                 dsctbl.obj int.obj fifo.obj mouse.obj keyboard.obj \
-                memory.obj sheet.obj timer.obj multitask.obj
+                memory.obj sheet.obj timer.obj multitask.obj file.obj \
+                window.obj console.obj debug.obj
 BINPATH = ./bin/
 
 
@@ -66,12 +67,13 @@ bootpack.hrb : bootpack.bim Makefile
 haribote.sys : asmhead.bin bootpack.hrb Makefile
 	$(COPY) /B asmhead.bin+bootpack.hrb haribote.sys
 
-haribote.img : ipl10.bin haribote.sys Makefile
+haribote.img : ipl10.bin haribote.sys hlt.obj Makefile
 	$(EDIMG)   imgin:./tolset/z_tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \
 		copy from:haribote.sys to:@: \
 		copy from:int.c to:@: \
-		copy from:Makefile to:@: \
+		copy from:test.txt to:@: \
+		copy from:hlt.obj to:@: \
 		imgout:haribote.img
 
 # 其他指令

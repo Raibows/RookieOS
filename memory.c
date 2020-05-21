@@ -123,8 +123,10 @@ unsigned int memman_alloc_4kB(struct MemMan* man, unsigned int size) {
 }
 
 int memman_free_4kB(struct MemMan* man, unsigned int addr, unsigned int size) {
-//    size = (size + 0xfff) & 0xfffff000; //我觉得有问题，原始内存小，强行补齐（变大），很可能越界
-    size &= 0xfffff000; //应该是向下取整
+    size = (size + 0xfff) & 0xfffff000; //我觉得有问题，原始内存小，强行补齐（变大），很可能越界
+//    size &= 0xfffff000; //应该是向下取整
+// 因为你allocate的时候默认是4kB补齐的，但是使用者默认以为size还是那么大，当他想要释放的时候，你必须同样补齐size
+// 补齐后的大小才是真正的，否则内存泄漏
     return memman_free(man, addr, size);
 }
 

@@ -20,6 +20,15 @@ struct FileInfo;
 
 #define NULL ((void *)0)
 
+/* debug.c */
+void debug_print(char* info);
+void debug_init(struct Sheet* sht_back);
+#define assert(x, info) \
+    if (!(x))           \
+    {                   \
+        debug_print(info);    \
+    }
+    
 /*asmhead.asm*/
 struct BootInfo {
     /*
@@ -79,9 +88,7 @@ void putfont8(char* vram, int XSIZE, int x, int y, char color, char* font);
 void putfonts8_asc(char* vram, int XSIZE, int x, int y, char color, unsigned char* fonts);
 void init_mouse_cursor8(char* mouse, char bc);
 void putblock8_8(char* vram, int XSIZE, int pxsize, int pysize, int px0, int py0, char* buf, int bxsize);
-void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s);
-void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title, char is_act);
-void make_title(struct Sheet* sht, char* title, char is_act, char is_close_btn);
+
 
 #define COL8_000000 0   //黑 
 #define COL8_FF0000 1   //梁红 
@@ -250,7 +257,7 @@ struct Sheet {
     /*
      * buf为该图层内容的地址
      * col_inv透明色号
-     * height表示图层高度
+     * height表示图层高度, -1为隐藏状态
      * cursor_x记录光标极限 (默认make_window的情况下）
      * cursor_y记录光标极限
      */
@@ -386,13 +393,24 @@ void task_add(struct Task* task);
 void task_remove(struct Task* task);
 void task_switch_level(void);
 void task_idle(void);
+void task_free(struct Task* task);
+
+/* file.c */
+void file_unzip_fat(int* fat, unsigned char* img);
+void file_loadfile(int cluster_id, int size, char* buf, int* fat, unsigned char* img);
+int file_locate(struct FileInfo* fileinfo, unsigned char* filename);
 
 
+/* window.c */
+void putfonts8_asc_sht(struct Sheet* sht, int x, int y, int c, int bc, char* s);
+void make_window(struct MemMan* man, struct Sheet* sht, int xsize, int ysize, int color, int col_inv, char* title, char is_act);
+void make_title(struct Sheet* sht, char* title, char is_act, char is_close_btn);
 
 
-
-
-
+/* console.c */
+//void console_task(struct Sheet* sht, unsigned int total_mem);
+void console_task(struct Sheet* sht, unsigned int total_mem, struct Task* task_b, struct Sheet* sht_b);
+void task_count_main(struct Sheet* sht_win_b);
 
 
 

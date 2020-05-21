@@ -18,7 +18,7 @@ GLOBAL _asm_int_handler21, _asm_int_handler27, _asm_int_handler2c, _asm_int_hand
 GLOBAL _load_cr0, _store_cr0, _memtest_sub
 GLOBAL _load_tr, _task_switch4, _task_switch3, _far_jmp
 EXTERN _int_handler21, _int_handler27, _int_handler2c, _int_handler20
-    
+
 
 
 ; 以下是实际的函数
@@ -28,6 +28,7 @@ EXTERN _int_handler21, _int_handler27, _int_handler2c, _int_handler20
 _io_hlt:  ; void io_hlt(void);
     HLT
     RET
+
 
 _io_cli:
     CLI ;clear interupt flags 屏蔽中断
@@ -186,6 +187,9 @@ _asm_int_handler20:
     POP	ES
     IRETD
 
+
+
+
 _memtest_sub:  ; unsigned int memtest_sub(unsigned int start, unsigned int end)
 ;关于esp栈指针移动可以看http://www.ruanyifeng.com/blog/2018/01/assembly-language-primer.html（有错误）
 ;还是建议自己gcc看汇编8，注意调用call时候会先把eip（当前指令寄存器）压栈，esp自然-4，这是一个坑
@@ -237,8 +241,8 @@ _far_jmp:
     ;esp+0到esp+3是函数地址
     JMP FAR [ESP+4] ; esp+4开始到esp+7 -> eip esp+8到esp+11共4个字节 -> cs
     RET
-    
-    
+
+
     
     
     
