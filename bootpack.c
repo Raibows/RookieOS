@@ -71,43 +71,6 @@ void HariMain (void) {
     for (i = 0; i<task_b_num; ++i) task_b[i] = NULL;
     console_init(shtctl, man, &sht_console, &task_console, &task_b, &sht_win_b[0], task_b_num);
     
-//    task_console->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 20;
-//    task_console->tss.eip = (int) &console_task;
-//    task_console->tss.es = 1 * 8;
-//    task_console->tss.cs = 2 * 8;
-//    task_console->tss.ss = 1 * 8;
-//    task_console->tss.ds = 1 * 8;
-//    task_console->tss.fs = 1 * 8;
-//    task_console->tss.gs = 1 * 8;
-//    *((int*) (task_console->tss.esp + 4)) = (int) sht_console;
-//    *((int*) (task_console->tss.esp + 8)) = total_mem;
-    
-    
-    
-    
-    
-
-//    for (i = 0; i < 4; ++i)
-//    {
-//        sht_win_b[i] = sheet_alloc(shtctl);
-//        sprintf(s, "task_b %d", i);
-//        make_window(man, sht_win_b[i], 160, -1, COL8_C6C6C6, -1, s, 0);
-//        task_b[i] = task_alloc();
-//        task_b[i]->tss.esp = memman_alloc_4kB(man, 64 * 1024) + 64 * 1024 - 8;
-//        task_b[i]->tss.eip = (int) &task_count_main;
-//        task_b[i]->tss.es = 1 * 8;
-//        task_b[i]->tss.cs = 2 * 8;
-//        task_b[i]->tss.ss = 1 * 8;
-//        task_b[i]->tss.ds = 1 * 8;
-//        task_b[i]->tss.fs = 1 * 8;
-//        task_b[i]->tss.gs = 1 * 8;
-//        *((int *) (task_b[i]->tss.esp + 4)) = (int) sht_win_b[i];
-//        task_run(task_b[i], 2, i + 1);
-//    }
-    
-//    *((int*) (task_console->tss.esp + 12)) = (int) task_b[0];
-//    *((int*) (task_console->tss.esp + 16)) = (int) sht_win_b[0];
-//    task_run(task_console, 2, 2); // level=2, priority=2
     
     int mx = 99, my = 99;
     

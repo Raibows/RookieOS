@@ -420,6 +420,7 @@ struct ConsoleControl {
     struct MemMan* man;
     struct FileInfo* fileinfo;
     struct SEGMENT_DESCRIPTOR* gdt;
+    int cur_x, cur_y, cur_c;
 };
 void console_init(struct SheetControl* shtctl, struct MemMan* man, struct Sheet** consht,
                   struct Task** contask, struct Task** task_b, struct Sheet** sht_b, int task_b_num);
