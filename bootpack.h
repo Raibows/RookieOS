@@ -83,7 +83,7 @@ int check_pos(int x, int low, int high);
 void init_palette(void);
 void set_palette(int start, int end, unsigned char *rgb);
 void boxfill8(char* vram, int XSIZE, unsigned char color, int x0, int y0, int x1, int y1);
-void init_screen(char* vram, int XSIZE, int YSIZE);
+void init_screen(struct Sheet* sht, int XSIZE, int YSIZE);
 void putfont8(char* vram, int XSIZE, int x, int y, char color, char* font);
 void putfonts8_asc(char* vram, int XSIZE, int x, int y, char color, unsigned char* fonts);
 void init_mouse_cursor8(char* mouse, char bc);

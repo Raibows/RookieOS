@@ -29,21 +29,22 @@ void init_palette(void) {
     /* C语言中的static char语句只能用于数据，相当于汇编中的DB指令 */
 }
 
-void init_screen(char* vram, int XSIZE, int YSIZE) {
-	boxfill8(vram, XSIZE, COL8_008484,  0, 0, XSIZE -  1, YSIZE - 29);
-	boxfill8(vram, XSIZE, COL8_C6C6C6,  0, YSIZE - 28, XSIZE -  1, YSIZE - 28);
-	boxfill8(vram, XSIZE, COL8_FFFFFF,  0, YSIZE - 27, XSIZE -  1, YSIZE - 27);
-	boxfill8(vram, XSIZE, COL8_C6C6C6,  0, YSIZE - 26, XSIZE -  1, YSIZE -  1);
-	boxfill8(vram, XSIZE, COL8_FFFFFF,  3, YSIZE - 24, 59, YSIZE - 24);
-	boxfill8(vram, XSIZE, COL8_FFFFFF,  2, YSIZE - 24,  2, YSIZE -  4);
-	boxfill8(vram, XSIZE, COL8_848484,  3, YSIZE -  4, 59, YSIZE -  4);
-	boxfill8(vram, XSIZE, COL8_848484, 59, YSIZE - 23, 59, YSIZE -  5);
-	boxfill8(vram, XSIZE, COL8_000000,  2, YSIZE -  3, 59, YSIZE -  3);
-	boxfill8(vram, XSIZE, COL8_000000, 60, YSIZE - 24, 60, YSIZE -  3);
-	boxfill8(vram, XSIZE, COL8_848484, XSIZE - 47, YSIZE - 24, XSIZE -  4, YSIZE - 24);
-	boxfill8(vram, XSIZE, COL8_848484, XSIZE - 47, YSIZE - 23, XSIZE - 47, YSIZE -  4);
-	boxfill8(vram, XSIZE, COL8_FFFFFF, XSIZE - 47, YSIZE -  3, XSIZE -  4, YSIZE -  3);
-	boxfill8(vram, XSIZE, COL8_FFFFFF, XSIZE -  3, YSIZE - 24, XSIZE -  3, YSIZE -  3);
+void init_screen(struct Sheet* sht, int XSIZE, int YSIZE) {
+	boxfill8(sht->buf, XSIZE, COL8_008484,  0, 0, XSIZE -  1, YSIZE - 1);
+	putfonts8_asc_sht(sht, XSIZE / 2 - 32, YSIZE / 2 - 8, COL8_000000, COL8_008484, "RookieOS");
+//	boxfill8(vram, XSIZE, COL8_C6C6C6,  0, YSIZE - 28, XSIZE -  1, YSIZE - 28);
+//	boxfill8(vram, XSIZE, COL8_FFFFFF,  0, YSIZE - 27, XSIZE -  1, YSIZE - 27);
+//	boxfill8(vram, XSIZE, COL8_C6C6C6,  0, YSIZE - 26, XSIZE -  1, YSIZE -  1);
+//	boxfill8(vram, XSIZE, COL8_FFFFFF,  3, YSIZE - 24, 59, YSIZE - 24);
+//	boxfill8(vram, XSIZE, COL8_FFFFFF,  2, YSIZE - 24,  2, YSIZE -  4);
+//	boxfill8(vram, XSIZE, COL8_848484,  3, YSIZE -  4, 59, YSIZE -  4);
+//	boxfill8(vram, XSIZE, COL8_848484, 59, YSIZE - 23, 59, YSIZE -  5);
+//	boxfill8(vram, XSIZE, COL8_000000,  2, YSIZE -  3, 59, YSIZE -  3);
+//	boxfill8(vram, XSIZE, COL8_000000, 60, YSIZE - 24, 60, YSIZE -  3);
+//	boxfill8(vram, XSIZE, COL8_848484, XSIZE - 47, YSIZE - 24, XSIZE -  4, YSIZE - 24);
+//	boxfill8(vram, XSIZE, COL8_848484, XSIZE - 47, YSIZE - 23, XSIZE - 47, YSIZE -  4);
+//	boxfill8(vram, XSIZE, COL8_FFFFFF, XSIZE - 47, YSIZE -  3, XSIZE -  4, YSIZE -  3);
+//	boxfill8(vram, XSIZE, COL8_FFFFFF, XSIZE -  3, YSIZE - 24, XSIZE -  3, YSIZE -  3);
 	return;
 }
 

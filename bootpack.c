@@ -60,7 +60,7 @@ void HariMain (void) {
     sheet_setbuf(sht_back, buf_back, XSIZE, YSIZE, -1); //背景background没有透明色
     sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); //透明色号99
     
-    init_screen(buf_back, XSIZE, YSIZE);
+    init_screen(sht_back, XSIZE, YSIZE);
     init_mouse_cursor8(buf_mouse, 99);
     make_window(man, sht_text, 160, -1, COL8_C6C6C6, -1, "test", 1);
 //    make_window(man, sht_console, 280, 220, COL8_C6C6C6, -1, "console", 1);
