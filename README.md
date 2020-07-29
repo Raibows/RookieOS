@@ -1,6 +1,6 @@
 ## RookieOS
 <p align="center">
-<img src="https://visitor-badge.glitch.me/badge?page_id=<1fc13fc04723acc40f0baa852540efbec3c533922e6aab990a0df105d4e04738fe>">
+<img src="https://chizuo.top/api/get_visitor_counter_badge?id=4e73897cc88a3d14758c6b1f0c2c3151"> <br>
 <img src="https://raw.githubusercontent.com/Raibows/MarkdownPhotos/master/picgoimage/20200618181048.png">
 </p>
 This project is based on <a href="https://ja.wikipedia.org/wiki/OSASK">OSASK</a>. A tiny x86 OS with Bootloader, Interrupt, Segmentation, Multitask based on timer and a simple shell.
